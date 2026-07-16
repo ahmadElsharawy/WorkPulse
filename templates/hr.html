@@ -8,7 +8,7 @@
   </div>
 
   <!-- Quick Metrics Section -->
-  <div class="row g-4 mb-5">
+<div id="metrics-wrapper" class="row g-4 mb-5">
     <div class="col-md-4">
       <div class="card border-0 shadow-sm bg-primary text-white h-100">
         <div class="card-body d-flex align-items-center justify-content-between p-4">
@@ -59,6 +59,101 @@
     </div>
   </div>
 
+    <!-- All Employee Tasks Live Summary Section -->
+    <div class="mt-5">
+      <h3 class="mb-3">All Employee Tasks Live Summary</h3>
+      <!-- Filter Card -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Filters</h5>
+          <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#summaryFilterCollapse" aria-expanded="true" aria-controls="summaryFilterCollapse">
+            Toggle Filters
+          </button>
+        </div>
+        <div class="collapse show" id="summaryFilterCollapse">
+          <div class="card-body">
+            <form method="GET" action="{{ url_for('hr_dashboard') }}">
+              <div class="row g-3">
+                <!-- Employee Name Filter -->
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">Employee</label>
+                  <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto; background-color: #f8f9fa;">
+                    {% for emp in employees_list %}
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="sum_employees" value="{{ emp.id }}" id="sum_emp_{{ emp.id }}"
+                          {% if emp.id in selected_sum_employees %}checked{% endif %}>
+                        <label class="form-check-label text-truncate d-block" for="sum_emp_{{ emp.id }}" style="max-width: 100%;">
+                          {{ emp.full_name }}
+                        </label>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+                <!-- Status Filter -->
+                <div class="col-md-4">
+                  <label class="form-label fw-bold">Status</label>
+                  <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto; background-color: #f8f9fa;">
+                    {% for status in ['Running', 'Pause', 'Finish', 'Not Work'] %}
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="sum_statuses" value="{{ status }}" id="sum_status_{{ status }}"
+                          {% if status in selected_sum_statuses %}checked{% endif %}>
+                        <label class="form-check-label" for="sum_status_{{ status }}">
+                          {{ status }}
+                        </label>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+<div class="col-md-2">
+  <label class="form-label fw-bold">Created At</label>
+  <div class="mb-2">
+    <input type="date" class="form-control form-control-sm" name="summary_created_from" value="{{ request.args.get('summary_created_from', '') }}">
+  </div>
+  <div>
+    <input type="date" class="form-control form-control-sm" name="summary_created_to" value="{{ request.args.get('summary_created_to', '') }}">
+  </div>
+</div>
+<div class="col-md-2 d-flex align-items-end">
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('hr_dashboard') }}" class="btn btn-secondary btn-sm">Reset</a>
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+  </div>
+</div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- Summary Table -->
+      <div id="summary-wrapper" class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Employee Name</th>
+              <th class="text-center">Running</th>
+              <th class="text-center">Pause</th>
+              <th class="text-center">Finish</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sum in summaries %}
+            <tr>
+              <td><strong>{{ sum.employee_name }}</strong></td>
+              {% if sum.running_cnt == 0 %}
+                <td class="text-center"><span class="badge bg-danger">Not Work</span></td>
+              {% else %}
+                <td class="text-center"><span class="badge bg-primary">{{ sum.running_cnt }}</span></td>
+              {% endif %}
+              <td class="text-center"><span class="badge bg-warning text-dark">{{ sum.pause_cnt }}</span></td>
+              <td class="text-center"><span class="badge bg-success">{{ sum.finish_cnt }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+          </div>
+      </div>
+    </div>
+
   <!-- Navigation Grid Section -->
   <div class="row g-4">
     <!-- Manage Employees Card -->
@@ -95,4 +190,20 @@
     </div>
   </div>
 </div>
+<script>
+  function refreshMetricsAndSummary() {
+    fetch(window.location.href, {cache: "no-store"})
+      .then(resp => resp.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        const metrics = doc.getElementById("metrics-wrapper");
+        const summary = doc.getElementById("summary-wrapper");
+        if (metrics) document.getElementById("metrics-wrapper").innerHTML = metrics.innerHTML;
+        if (summary) document.getElementById("summary-wrapper").innerHTML = summary.innerHTML;
+      })
+      .catch(err => console.error("Refresh error:", err));
+  }
+  setInterval(refreshMetricsAndSummary, 10000);
+</script>
 {% endblock %}

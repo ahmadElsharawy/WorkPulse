@@ -1,8 +1,8 @@
 # app.py
-import os
+import os, json
 import sqlite3
 from datetime import datetime
-from flask import Flask, g, render_template, request, redirect, url_for, flash
+from flask import Flask, g, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 
@@ -319,14 +319,79 @@ def change_password():
 def hr_dashboard():
     db = get_db()
     total_employees = db.execute("SELECT COUNT(*) FROM users WHERE role = 'Employee'").fetchone()[0]
+    # Fetch employee task summary
+    # Prepare filters
+    selected_sum_employees = [int(x) for x in request.args.getlist('sum_employees') if x.isdigit()]
+    selected_sum_statuses = request.args.getlist('sum_statuses')  # values: Running, Pause, Finish, Not Work
+    
+    summary_query = '''
+        SELECT u.id, u.full_name AS employee_name,
+            SUM(CASE WHEN t.status = 'Running' THEN 1 ELSE 0 END) AS running_cnt,
+            SUM(CASE WHEN t.status = 'Pause' THEN 1 ELSE 0 END) AS pause_cnt,
+            SUM(CASE WHEN t.status = 'Finish' THEN 1 ELSE 0 END) AS finish_cnt
+        FROM users u
+        LEFT JOIN tasks t ON u.id = t.employee_id
+        WHERE u.role = 'Employee'
+    '''
+    summary_params = []
+    if selected_sum_employees:
+        placeholders = ','.join('?' for _ in selected_sum_employees)
+        summary_query += f" AND u.id IN ({placeholders})"
+        summary_params.extend(selected_sum_employees)
+    # Date range filters for summary (apply to task creation date)
+    created_from = request.args.get('summary_created_from', '').strip()
+    created_to = request.args.get('summary_created_to', '').strip()
+    if created_from:
+        summary_query += " AND t.created_at >= ?"
+        summary_params.append(f"{created_from} 00:00")
+    if created_to:
+        summary_query += " AND t.created_at <= ?"
+        summary_params.append(f"{created_to} 23:59")
+    summary_query += " GROUP BY u.id"
+    employee_summaries = db.execute(summary_query, summary_params).fetchall()
+    # Convert to list of dicts with counts
+    summaries = []
+    for row in employee_summaries:
+        total = (row['running_cnt'] or 0) + (row['pause_cnt'] or 0) + (row['finish_cnt'] or 0)
+        # Apply status filter if any
+        include = True
+        if selected_sum_statuses:
+            # For each selected status, check if employee has count>0 (except Not Work)
+            status_match = False
+            for status in selected_sum_statuses:
+                if status == 'Running' and (row['running_cnt'] or 0) > 0:
+                    status_match = True
+                if status == 'Pause' and (row['pause_cnt'] or 0) > 0:
+                    status_match = True
+                if status == 'Finish' and (row['finish_cnt'] or 0) > 0:
+                    status_match = True
+                if status == 'Not Work' and (row['running_cnt'] or 0) == 0:
+                    status_match = True
+            include = status_match
+        if include:
+            summaries.append({
+                'employee_id': row['id'],
+                'employee_name': row['employee_name'],
+                'running_cnt': row['running_cnt'] or 0,
+                'pause_cnt': row['pause_cnt'] or 0,
+                'finish_cnt': row['finish_cnt'] or 0,
+                'total': total
+            })
+    # Fetch employee options for filter UI
+    employees_list = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
     total_projects = db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
     active_tasks = db.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Running'").fetchone()[0]
     return render_template(
         'hr.html',
         total_employees=total_employees,
         total_projects=total_projects,
-        active_tasks=active_tasks
+        active_tasks=active_tasks,
+        summaries=summaries,
+        employees_list=employees_list,
+        selected_sum_employees=selected_sum_employees,
+        selected_sum_statuses=selected_sum_statuses
     )
+
 
 @app.route('/hr/tracking')
 @role_required('HR')
