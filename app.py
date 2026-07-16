@@ -219,23 +219,24 @@ def set_manager_ids(employee_id, manager_ids):
 
 # ---------- User model ----------
 class User(UserMixin):
-    def __init__(self, id_, username, role):
+    def __init__(self, id_, username, role, full_name=None):
         self.id = id_
         self.username = username
         self.role = role
+        self.full_name = full_name
 
     @staticmethod
     def get(user_id):
         row = get_db().execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         if row:
-            return User(row['id'], row['username'], row['role'])
+            return User(row['id'], row['username'], row['role'], row['full_name'])
         return None
 
     @staticmethod
     def find_by_username(username):
         row = get_db().execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         if row:
-            return User(row['id'], row['username'], row['role'])
+            return User(row['id'], row['username'], row['role'], row['full_name'])
         return None
 
 @login_manager.user_loader
@@ -272,7 +273,7 @@ def login():
         password = request.form['password']
         row = get_db().execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         if row and bcrypt.check_password_hash(row['password_hash'], password):
-            user = User(row['id'], row['username'], row['role'])
+            user = User(row['id'], row['username'], row['role'], row['full_name'])
             login_user(user)
             flash('Logged in successfully.', 'success')
             return redirect(url_for('index'))

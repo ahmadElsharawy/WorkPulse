@@ -14,7 +14,7 @@
     <div class='collapse navbar-collapse'>
       <ul class='navbar-nav ms-auto'>
         {% if current_user.is_authenticated %}
-        <li class='nav-item'><span class='nav-link text-white-50'>Logged in as: <strong>{{ current_user.username }}</strong> ({{ current_user.role }})</span></li>
+        <li class='nav-item'><span class='nav-link text-white-50'>Welcome <strong>{{ current_user.full_name if current_user.full_name else current_user.username }}</strong></span></li>
         <li class='nav-item'><a class='nav-link' href='{{ url_for('change_password') }}'>Change Password</a></li>
         <li class='nav-item'><a class='nav-link' href='{{ url_for('logout') }}'>Logout</a></li>
         {% endif %}
