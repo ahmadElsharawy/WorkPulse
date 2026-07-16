@@ -195,7 +195,7 @@ def seed_data():
     if ahmed and badr:
         db.execute('INSERT INTO employee_managers (employee_id, manager_id) VALUES (?,?)', (ahmed['id'], badr['id']))
         
-        now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        now = datetime.now().strftime('%Y-%m-%d %H:%M')
         db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
                    (ahmed['id'], proj_a['id'] if proj_a else None, 'Task One', 'First sample task', 'Pause', now, 0, ahmed['id']))
         db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
@@ -620,7 +620,7 @@ def add_task():
         title = request.form['title']
         description = request.form.get('description', '')
         project_id = int(request.form['project_id'])
-        now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        now = datetime.now().strftime('%Y-%m-%d %H:%M')
         db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
                    (current_user.id, project_id, title, description, 'Pause', now, 0, current_user.id))
         db.commit()
@@ -771,7 +771,7 @@ def add_subordinate_task(sub_id):
         title = request.form['title']
         description = request.form.get('description', '')
         project_id = int(request.form['project_id'])
-        now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        now = datetime.now().strftime('%Y-%m-%d %H:%M')
         db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
                    (sub_id, project_id, title, description, 'Pause', now, 0, current_user.id))
         db.commit()
