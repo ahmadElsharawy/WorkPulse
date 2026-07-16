@@ -727,16 +727,18 @@ def update_task_status(task_id):
 @role_required('Employee')
 def delete_task(task_id):
     db = get_db()
-    task = db.execute('SELECT creator_id FROM tasks WHERE id = ? AND employee_id = ?', (task_id, current_user.id)).fetchone()
+    task = db.execute('SELECT creator_id, employee_id FROM tasks WHERE id = ?', (task_id,)).fetchone()
     if not task:
         flash('Task not found.', 'danger')
         return redirect(url_for('employee_dashboard'))
     if task['creator_id'] != current_user.id:
-        flash('You cannot delete tasks assigned by your manager.', 'danger')
+        flash('You can only delete tasks created by you.', 'danger')
         return redirect(url_for('employee_dashboard'))
     db.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
     db.commit()
     flash('Task deleted.', 'success')
+    if task['employee_id'] != current_user.id:
+        return redirect(url_for('view_subordinate_tasks', sub_id=task['employee_id']))
     return redirect(url_for('employee_dashboard'))
 
 # ----- Subordinate Tasks -----
