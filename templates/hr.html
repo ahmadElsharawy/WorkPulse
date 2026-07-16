@@ -115,6 +115,7 @@
   </div>
 </div>
 
+<div id="live-tasks-wrapper">
 {% if tasks %}
 <div class='row mt-4'>
   <div class='col-12'>
@@ -177,6 +178,7 @@
 <hr class='my-5'>
 <p class='text-muted text-center'>No tasks found in the system.</p>
 {% endif %}
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -208,7 +210,24 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
     
+    function pollTasks() {
+        fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newWrapper = doc.getElementById('live-tasks-wrapper');
+                const oldWrapper = document.getElementById('live-tasks-wrapper');
+                if (newWrapper && oldWrapper) {
+                    oldWrapper.innerHTML = newWrapper.innerHTML;
+                    updateTimers();
+                }
+            })
+            .catch(err => console.error("Error updating live list:", err));
+    }
+    
     setInterval(updateTimers, 1000);
+    setInterval(pollTasks, 5000); // refresh the list every 5 seconds
     updateTimers();
 });
 </script>
