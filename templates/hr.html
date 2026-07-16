@@ -9,6 +9,112 @@
   </div>
 </div>
 
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Filter Live Tracking Tasks</h5>
+    <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="true" aria-controls="filterCollapse">
+      Toggle Filters
+    </button>
+  </div>
+  <div class="collapse show" id="filterCollapse">
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('hr_dashboard') }}">
+        <div class="row g-3">
+          
+          <!-- Employees Filter -->
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Employees</label>
+            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+              {% for emp in employees_list %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="employees" value="{{ emp.id }}" id="emp_{{ emp.id }}"
+                    {% if emp.id in selected_employees %}checked{% endif %}>
+                  <label class="form-check-label text-truncate d-block" for="emp_{{ emp.id }}" style="max-width: 100%;">
+                    {{ emp.full_name }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          
+          <!-- Projects Filter -->
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Projects</label>
+            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="projects" value="none" id="proj_none"
+                  {% if 'none' in selected_projects %}checked{% endif %}>
+                <label class="form-check-label" for="proj_none">
+                  <em>No Project</em>
+                </label>
+              </div>
+              {% for proj in projects_list %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="projects" value="{{ proj.id }}" id="proj_{{ proj.id }}"
+                    {% if proj.id in selected_projects %}checked{% endif %}>
+                  <label class="form-check-label text-truncate d-block" for="proj_{{ proj.id }}" style="max-width: 100%;">
+                    {{ proj.name }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          
+          <!-- Status Filter -->
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Status</label>
+            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+              {% for status in ['Running', 'Pause', 'Finish'] %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="statuses" value="{{ status }}" id="status_{{ status }}"
+                    {% if status in selected_statuses %}checked{% endif %}>
+                  <label class="form-check-label" for="status_{{ status }}">
+                    {{ status }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Assigned By Filter -->
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Assigned By</label>
+            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+              {% for creator in creators_list %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="creators" value="{{ creator.id }}" id="creator_{{ creator.id }}"
+                    {% if creator.id in selected_creators %}checked{% endif %}>
+                  <label class="form-check-label text-truncate d-block" for="creator_{{ creator.id }}" style="max-width: 100%;">
+                    {{ creator.full_name }}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Created At Date Range -->
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Created At</label>
+            <div class="mb-2">
+              <input type="date" class="form-control form-control-sm" name="created_from" value="{{ created_from }}" placeholder="From">
+              <span class="text-muted small" style="font-size: 0.75rem;">From</span>
+            </div>
+            <div>
+              <input type="date" class="form-control form-control-sm" name="created_to" value="{{ created_to }}" placeholder="To">
+              <span class="text-muted small" style="font-size: 0.75rem;">To</span>
+            </div>
+          </div>
+          
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <a href="{{ url_for('hr_dashboard') }}" class="btn btn-secondary btn-sm">Reset Filters</a>
+          <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% if tasks %}
 <div class='row mt-4'>
   <div class='col-12'>

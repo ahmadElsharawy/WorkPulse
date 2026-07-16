@@ -319,17 +319,98 @@ def change_password():
 def hr_dashboard():
     db = get_db()
     
-    # Fetch all tasks in the system for live tracking
-    tasks = db.execute('''
+    # Get filter inputs
+    selected_employees = [int(x) for x in request.args.getlist('employees') if x.isdigit()]
+    selected_projects = []
+    for x in request.args.getlist('projects'):
+        if x == 'none':
+            selected_projects.append('none')
+        elif x.isdigit():
+            selected_projects.append(int(x))
+            
+    selected_statuses = request.args.getlist('statuses')
+    created_from = request.args.get('created_from', '').strip()
+    created_to = request.args.get('created_to', '').strip()
+    selected_creators = [int(x) for x in request.args.getlist('creators') if x.isdigit()]
+    
+    # Build query
+    query = '''
         SELECT t.*, u.full_name AS employee_name, creator.full_name AS creator_name, p.name AS project_name
         FROM tasks t
         JOIN users u ON t.employee_id = u.id
         LEFT JOIN users creator ON t.creator_id = creator.id
         LEFT JOIN projects p ON t.project_id = p.id
-        ORDER BY t.created_at DESC
-    ''').fetchall()
+    '''
     
-    return render_template('hr.html', tasks=tasks)
+    conditions = []
+    params = []
+    
+    if selected_employees:
+        placeholders = ','.join('?' for _ in selected_employees)
+        conditions.append(f"t.employee_id IN ({placeholders})")
+        params.extend(selected_employees)
+        
+    if selected_projects:
+        proj_conds = []
+        has_none = False
+        val_projs = []
+        for p in selected_projects:
+            if p == 'none':
+                has_none = True
+            else:
+                val_projs.append(p)
+        if val_projs:
+            placeholders = ','.join('?' for _ in val_projs)
+            proj_conds.append(f"t.project_id IN ({placeholders})")
+            params.extend(val_projs)
+        if has_none:
+            proj_conds.append("t.project_id IS NULL")
+        if proj_conds:
+            conditions.append(f"({' OR '.join(proj_conds)})")
+            
+    if selected_statuses:
+        placeholders = ','.join('?' for _ in selected_statuses)
+        conditions.append(f"t.status IN ({placeholders})")
+        params.extend(selected_statuses)
+        
+    if created_from:
+        conditions.append("t.created_at >= ?")
+        params.append(f"{created_from} 00:00")
+        
+    if created_to:
+        conditions.append("t.created_at <= ?")
+        params.append(f"{created_to} 23:59")
+        
+    if selected_creators:
+        placeholders = ','.join('?' for _ in selected_creators)
+        conditions.append(f"t.creator_id IN ({placeholders})")
+        params.extend(selected_creators)
+        
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+        
+    query += " ORDER BY t.created_at DESC"
+    
+    tasks = db.execute(query, params).fetchall()
+    
+    # Fetch options for filters
+    employees_list = db.execute("SELECT id, full_name, username FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
+    projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
+    creators_list = db.execute("SELECT DISTINCT u.id, u.full_name, u.username FROM users u JOIN tasks t ON t.creator_id = u.id ORDER BY u.full_name").fetchall()
+    
+    return render_template(
+        'hr.html', 
+        tasks=tasks,
+        employees_list=employees_list,
+        projects_list=projects_list,
+        creators_list=creators_list,
+        selected_employees=selected_employees,
+        selected_projects=selected_projects,
+        selected_statuses=selected_statuses,
+        created_from=created_from,
+        created_to=created_to,
+        selected_creators=selected_creators
+    )
 
 @app.route('/hr/employees')
 @role_required('HR')
