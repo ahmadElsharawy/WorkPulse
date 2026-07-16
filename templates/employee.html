@@ -329,6 +329,7 @@
             <th>Status</th>
             <th>Created At</th>
             <th>Running Duration</th>
+            <th>Assigned By</th>
           </tr>
         </thead>
         <tbody>
@@ -358,6 +359,13 @@
             <td>{{ task.created_at|datetimeformat }}</td>
             <td>
               <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
+            </td>
+            <td>
+              {% if task.creator_id == current_user.id %}
+                <span class='text-muted'>Self</span>
+              {% else %}
+                <strong>{{ task.creator_name }}</strong>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

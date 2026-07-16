@@ -673,10 +673,11 @@ def employee_dashboard():
     
     # Build query for subordinate tasks live tracking
     sub_query = '''
-        SELECT t.*, u.full_name AS employee_name, p.name AS project_name
+        SELECT t.*, u.full_name AS employee_name, creator.full_name AS creator_name, p.name AS project_name
         FROM tasks t
         JOIN users u ON t.employee_id = u.id
         JOIN employee_managers em ON u.id = em.employee_id
+        LEFT JOIN users creator ON t.creator_id = creator.id
         LEFT JOIN projects p ON t.project_id = p.id
         WHERE em.manager_id = ?
     '''
