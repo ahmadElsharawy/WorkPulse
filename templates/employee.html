@@ -100,6 +100,25 @@
               <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary btn-sm px-3 py-1" style="font-size: 0.8rem;">Reset</a>
               <button type="submit" class="btn btn-primary btn-sm px-3 py-1" style="font-size: 0.8rem;">Filter</button>
             </div>
+            <!-- Hidden inputs to persist Subordinate Tasks filters if set -->
+            {% for p in selected_sub_projects %}
+              <input type="hidden" name="sub_projects" value="{{ p }}">
+            {% endfor %}
+            {% for s in selected_sub_statuses %}
+              <input type="hidden" name="sub_statuses" value="{{ s }}">
+            {% endfor %}
+            {% for c in selected_sub_creators %}
+              <input type="hidden" name="sub_creators" value="{{ c }}">
+            {% endfor %}
+            {% for e in selected_sub_employees %}
+              <input type="hidden" name="sub_employees" value="{{ e }}">
+            {% endfor %}
+            {% if sub_created_from %}
+              <input type="hidden" name="sub_created_from" value="{{ sub_created_from }}">
+            {% endif %}
+            {% if sub_created_to %}
+              <input type="hidden" name="sub_created_to" value="{{ sub_created_to }}">
+            {% endif %}
           </form>
         </div>
       </div>
@@ -172,6 +191,133 @@
 <div class='row'>
   <div class='col-12'>
     <h3 class='mb-4'>Subordinate Tasks Live Tracking</h3>
+    
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Filter Subordinate Tasks</h6>
+        <button class="btn btn-outline-light btn-sm px-2 py-0" style="font-size: 0.75rem;" type="button" data-bs-toggle="collapse" data-bs-target="#subTasksFilterCollapse" aria-expanded="true" aria-controls="subTasksFilterCollapse">
+          Toggle Filters
+        </button>
+      </div>
+      <div class="collapse show" id="subTasksFilterCollapse">
+        <div class="card-body">
+          <form method="GET" action="{{ url_for('employee_dashboard') }}">
+            <div class="row g-3">
+              
+              <!-- Employees Filter -->
+              <div class="col-md-3">
+                <label class="form-label fw-bold small mb-1">Employees</label>
+                <div class="border rounded p-2" style="max-height: 100px; overflow-y: auto; background-color: #f8f9fa; font-size: 0.85rem;">
+                  {% for emp in subordinates %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="sub_employees" value="{{ emp.id }}" id="sub_emp_{{ emp.id }}"
+                        {% if emp.id in selected_sub_employees %}checked{% endif %}>
+                      <label class="form-check-label text-truncate d-block" for="sub_emp_{{ emp.id }}" style="max-width: 100%;">
+                        {{ emp.full_name }}
+                      </label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+              
+              <!-- Projects Filter -->
+              <div class="col-md-3">
+                <label class="form-label fw-bold small mb-1">Projects</label>
+                <div class="border rounded p-2" style="max-height: 100px; overflow-y: auto; background-color: #f8f9fa; font-size: 0.85rem;">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="sub_projects" value="none" id="sub_proj_none"
+                      {% if 'none' in selected_sub_projects %}checked{% endif %}>
+                    <label class="form-check-label text-muted" for="sub_proj_none">
+                      <em>No Project</em>
+                    </label>
+                  </div>
+                  {% for proj in projects_list %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="sub_projects" value="{{ proj.id }}" id="sub_proj_{{ proj.id }}"
+                        {% if proj.id in selected_sub_projects %}checked{% endif %}>
+                      <label class="form-check-label text-truncate d-block" for="sub_proj_{{ proj.id }}" style="max-width: 100%;">
+                        {{ proj.name }}
+                      </label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+              
+              <!-- Status Filter -->
+              <div class="col-md-2">
+                <label class="form-label fw-bold small mb-1">Status</label>
+                <div class="border rounded p-2" style="max-height: 100px; overflow-y: auto; background-color: #f8f9fa; font-size: 0.85rem;">
+                  {% for status in ['Running', 'Pause', 'Finish'] %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="sub_statuses" value="{{ status }}" id="sub_status_{{ status }}"
+                        {% if status in selected_sub_statuses %}checked{% endif %}>
+                      <label class="form-check-label" for="sub_status_{{ status }}">
+                        {{ status }}
+                      </label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Assigned By Filter -->
+              <div class="col-md-2">
+                <label class="form-label fw-bold small mb-1">Assigned By</label>
+                <div class="border rounded p-2" style="max-height: 100px; overflow-y: auto; background-color: #f8f9fa; font-size: 0.85rem;">
+                  {% for creator in sub_creators_list %}
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="sub_creators" value="{{ creator.id }}" id="sub_creator_{{ creator.id }}"
+                        {% if creator.id in selected_sub_creators %}checked{% endif %}>
+                      <label class="form-check-label text-truncate d-block" for="sub_creator_{{ creator.id }}" style="max-width: 100%;">
+                        {% if creator.id == current_user.id %}
+                          Self ({{ creator.full_name }})
+                        {% else %}
+                          {{ creator.full_name }}
+                        {% endif %}
+                      </label>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <!-- Created At Date Range -->
+              <div class="col-md-2">
+                <label class="form-label fw-bold small mb-1">Created At</label>
+                <div class="mb-1">
+                  <input type="date" class="form-control form-control-sm" name="sub_created_from" value="{{ sub_created_from }}">
+                </div>
+                <div>
+                  <input type="date" class="form-control form-control-sm" name="sub_created_to" value="{{ sub_created_to }}">
+                </div>
+              </div>
+              
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-2">
+              <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary btn-sm px-3 py-1" style="font-size: 0.8rem;">Reset</a>
+              <button type="submit" class="btn btn-primary btn-sm px-3 py-1" style="font-size: 0.8rem;">Filter</button>
+            </div>
+            
+            <!-- Hidden inputs to persist My Tasks filters if set -->
+            {% for p in selected_projects %}
+              <input type="hidden" name="projects" value="{{ p }}">
+            {% endfor %}
+            {% for s in selected_statuses %}
+              <input type="hidden" name="statuses" value="{{ s }}">
+            {% endfor %}
+            {% for c in selected_creators %}
+              <input type="hidden" name="creators" value="{{ c }}">
+            {% endfor %}
+            {% if created_from %}
+              <input type="hidden" name="created_from" value="{{ created_from }}">
+            {% endif %}
+            {% if created_to %}
+              <input type="hidden" name="created_to" value="{{ created_to }}">
+            {% endif %}
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="subordinate-live-tasks-wrapper">
     {% if subordinate_tasks %}
       <table class='table table-striped'>
         <thead>
@@ -220,6 +366,7 @@
     {% else %}
       <p class='text-muted'>No tasks found for your subordinates.</p>
     {% endif %}
+    </div>
   </div>
 </div>
 {% endif %}
@@ -258,7 +405,26 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
     
+    function pollSubordinateTasks() {
+        const oldWrapper = document.getElementById('subordinate-live-tasks-wrapper');
+        if (!oldWrapper) return;
+        
+        fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newWrapper = doc.getElementById('subordinate-live-tasks-wrapper');
+                if (newWrapper) {
+                    oldWrapper.innerHTML = newWrapper.innerHTML;
+                    updateTimers();
+                }
+            })
+            .catch(err => console.error("Error updating subordinate live list:", err));
+    }
+    
     setInterval(updateTimers, 1000);
+    setInterval(pollSubordinateTasks, 5000); // refresh subordinate tasks list every 5 seconds
     updateTimers();
 });
 </script>

@@ -587,7 +587,7 @@ def delete_employee(user_id):
 def employee_dashboard():
     db = get_db()
     
-    # Get filter inputs
+    # ------------------ My Tasks Filters ------------------
     selected_projects = []
     for x in request.args.getlist('projects'):
         if x == 'none':
@@ -599,6 +599,20 @@ def employee_dashboard():
     created_from = request.args.get('created_from', '').strip()
     created_to = request.args.get('created_to', '').strip()
     selected_creators = [int(x) for x in request.args.getlist('creators') if x.isdigit()]
+    
+    # ------------------ Subordinate Tasks Filters ------------------
+    selected_sub_employees = [int(x) for x in request.args.getlist('sub_employees') if x.isdigit()]
+    selected_sub_projects = []
+    for x in request.args.getlist('sub_projects'):
+        if x == 'none':
+            selected_sub_projects.append('none')
+        elif x.isdigit():
+            selected_sub_projects.append(int(x))
+            
+    selected_sub_statuses = request.args.getlist('sub_statuses')
+    sub_created_from = request.args.get('sub_created_from', '').strip()
+    sub_created_to = request.args.get('sub_created_to', '').strip()
+    selected_sub_creators = [int(x) for x in request.args.getlist('sub_creators') if x.isdigit()]
     
     # Build query for employee's own tasks
     query = '''
@@ -657,15 +671,61 @@ def employee_dashboard():
         WHERE em.manager_id = ?
     ''', (current_user.id,)).fetchall()
     
-    subordinate_tasks = db.execute('''
+    # Build query for subordinate tasks live tracking
+    sub_query = '''
         SELECT t.*, u.full_name AS employee_name, p.name AS project_name
         FROM tasks t
         JOIN users u ON t.employee_id = u.id
         JOIN employee_managers em ON u.id = em.employee_id
         LEFT JOIN projects p ON t.project_id = p.id
         WHERE em.manager_id = ?
-        ORDER BY t.created_at DESC
-    ''', (current_user.id,)).fetchall()
+    '''
+    sub_params = [current_user.id]
+    
+    if selected_sub_employees:
+        placeholders = ','.join('?' for _ in selected_sub_employees)
+        sub_query += f" AND t.employee_id IN ({placeholders})"
+        sub_params.extend(selected_sub_employees)
+        
+    if selected_sub_projects:
+        proj_conds = []
+        has_none = False
+        val_projs = []
+        for p in selected_sub_projects:
+            if p == 'none':
+                has_none = True
+            else:
+                val_projs.append(p)
+        if val_projs:
+            placeholders = ','.join('?' for _ in val_projs)
+            proj_conds.append(f"t.project_id IN ({placeholders})")
+            sub_params.extend(val_projs)
+        if has_none:
+            proj_conds.append("t.project_id IS NULL")
+        if proj_conds:
+            sub_query += f" AND ({' OR '.join(proj_conds)})"
+            
+    if selected_sub_statuses:
+        placeholders = ','.join('?' for _ in selected_sub_statuses)
+        sub_query += f" AND t.status IN ({placeholders})"
+        sub_params.extend(selected_sub_statuses)
+        
+    if sub_created_from:
+        sub_query += " AND t.created_at >= ?"
+        sub_params.append(f"{sub_created_from} 00:00")
+        
+    if sub_created_to:
+        sub_query += " AND t.created_at <= ?"
+        sub_params.append(f"{sub_created_to} 23:59")
+        
+    if selected_sub_creators:
+        placeholders = ','.join('?' for _ in selected_sub_creators)
+        sub_query += f" AND t.creator_id IN ({placeholders})"
+        sub_params.extend(selected_sub_creators)
+        
+    sub_query += " ORDER BY t.created_at DESC"
+    
+    subordinate_tasks = db.execute(sub_query, sub_params).fetchall()
     
     # Fetch options for filters specifically for this employee's tasks
     projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
@@ -675,6 +735,16 @@ def employee_dashboard():
         JOIN tasks t ON t.creator_id = u.id 
         WHERE t.employee_id = ? 
         ORDER BY u.full_name
+    ''', (current_user.id,)).fetchall()
+    
+    # Fetch options for filters specifically for subordinate tasks
+    sub_creators_list = db.execute('''
+        SELECT DISTINCT creator.id, creator.full_name, creator.username
+        FROM users creator
+        JOIN tasks t ON t.creator_id = creator.id
+        JOIN employee_managers em ON t.employee_id = em.employee_id
+        WHERE em.manager_id = ?
+        ORDER BY creator.full_name
     ''', (current_user.id,)).fetchall()
     
     return render_template(
@@ -688,7 +758,15 @@ def employee_dashboard():
         selected_statuses=selected_statuses,
         created_from=created_from,
         created_to=created_to,
-        selected_creators=selected_creators
+        selected_creators=selected_creators,
+        
+        sub_creators_list=sub_creators_list,
+        selected_sub_employees=selected_sub_employees,
+        selected_sub_projects=selected_sub_projects,
+        selected_sub_statuses=selected_sub_statuses,
+        sub_created_from=sub_created_from,
+        sub_created_to=sub_created_to,
+        selected_sub_creators=selected_sub_creators
     )
 
 @app.route('/employee/add', methods=['GET', 'POST'])
