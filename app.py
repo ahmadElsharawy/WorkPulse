@@ -286,6 +286,32 @@ def logout():
     flash('Logged out.', 'info')
     return redirect(url_for('login'))
 
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        
+        if new_password != confirm_password:
+            flash('New passwords do not match.', 'danger')
+            return render_template('change_password.html')
+            
+        db = get_db()
+        row = db.execute('SELECT * FROM users WHERE id = ?', (current_user.id,)).fetchone()
+        
+        if row and bcrypt.check_password_hash(row['password_hash'], current_password):
+            new_hash = bcrypt.generate_password_hash(new_password).decode('utf-8')
+            db.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_hash, current_user.id))
+            db.commit()
+            flash('Password changed successfully.', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Incorrect current password.', 'danger')
+            
+    return render_template('change_password.html')
+
 # ----- HR Dashboard & User Management -----
 @app.route('/hr')
 @role_required('HR')
