@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Add Task for Subordinate{% endblock %}
+{% block content %}
+<h2>Add Task for {{ subordinate.full_name }} ({{ subordinate.username }})</h2>
+<form method='post'>
+  <div class='mb-3'>
+    <label class='form-label'>Title</label>
+    <input type='text' name='title' class='form-control' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Project</label>
+    <select name='project_id' class='form-select' required>
+      <option value='' disabled selected>Select Project...</option>
+      {% for proj in projects %}
+        <option value='{{ proj.id }}'>{{ proj.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Description</label>
+    <textarea name='description' class='form-control'></textarea>
+  </div>
+  <button type='submit' class='btn btn-primary'>Add Task</button>
+  <a href='{{ url_for('view_subordinate_tasks', sub_id=subordinate.id) }}' class='btn btn-secondary ms-2'>Cancel</a>
+</form>
+{% endblock %}

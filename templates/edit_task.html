@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Edit Task{% endblock %}
+{% block content %}
+<h2 class="mb-4">Edit Task</h2>
+<form method="post">
+  <div class="mb-3">
+    <label for="title" class="form-label">Title</label>
+    <input type="text" class="form-control" id="title" name="title" value="{{ task.title }}" required>
+  </div>
+  <div class="mb-3">
+    <label for="description" class="form-label">Description</label>
+    <textarea class="form-control" id="description" name="description" rows="3">{{ task.description }}</textarea>
+  </div>
+  <div class="mb-3">
+    <label for="project_id" class="form-label">Project</label>
+    <select class="form-select" id="project_id" name="project_id" required>
+      {% for proj in projects %}
+        <option value="{{ proj.id }}" {% if task.project_id == proj.id %}selected{% endif %}>{{ proj.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="status" class="form-label">Status</label>
+    <select class="form-select" id="status" name="status">
+      {% for i in range(0, 100, 10) %}
+        {% set pct = i ~ '%' %}
+        <option value="{{ pct }}" {% if task.status == pct %}selected{% endif %}>{{ pct }}</option>
+      {% endfor %}
+      <option value="Completed" {% if task.status == 'Completed' %}selected{% endif %}>Completed</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">Update Task</button>
+  <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary ms-2">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Add Employee{% endblock %}
+{% block content %}
+<h2>Add Employee</h2>
+<form method='post'>
+  <div class='mb-3'>
+    <label class='form-label'>Full Name</label>
+    <input type='text' name='full_name' class='form-control' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Username</label>
+    <input type='text' name='username' class='form-control' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Password</label>
+    <input type='password' name='password' class='form-control' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Position</label>
+    <input type='text' name='position' class='form-control' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Managers (optional - Hold Ctrl/Cmd to select multiple)</label>
+    <select name='managers' class='form-select' multiple>
+      {% for emp in employees %}
+        <option value='{{ emp.username }}'>{{ emp.full_name }} ({{ emp.username }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type='submit' class='btn btn-primary'>Add</button>
+  <a href='{{ url_for('hr_employees') }}' class='btn btn-secondary ms-2'>Cancel</a>
+</form>
+{% endblock %}

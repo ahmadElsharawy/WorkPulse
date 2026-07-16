@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}HR Dashboard{% endblock %}
+{% block content %}
+<div class='d-flex justify-content-between align-items-center mb-4'>
+  <h2>HR Dashboard</h2>
+  <div>
+    <a href='{{ url_for('hr_employees') }}' class='btn btn-primary me-2'>Manage Employees</a>
+    <a href='{{ url_for('hr_projects') }}' class='btn btn-secondary'>Manage Projects</a>
+  </div>
+</div>
+
+{% if tasks %}
+<div class='row mt-4'>
+  <div class='col-12'>
+    <h3 class='mb-4'>All Employee Tasks Live Tracking</h3>
+    <table class='table table-striped'>
+      <thead>
+        <tr>
+          <th>Employee Name</th>
+          <th>Project</th>
+          <th>Task Title</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Created At</th>
+          <th>Completed At</th>
+          <th>Assigned By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr>
+          <td><strong>{{ task.employee_name }}</strong></td>
+          <td>
+            {% if task.project_name %}
+              <span class='badge bg-info text-dark'>{{ task.project_name }}</span>
+            {% else %}
+              <span class='text-muted'>-</span>
+            {% endif %}
+          </td>
+          <td>{{ task.title }}</td>
+          <td>{{ task.description }}</td>
+          <td>
+            {% if task.status == 'Completed' %}
+              <span class='badge bg-success'>Completed</span>
+            {% else %}
+              <span class='badge bg-secondary'>{{ task.status }}</span>
+            {% endif %}
+          </td>
+          <td>{{ task.created_at|datetimeformat }}</td>
+          <td>{{ task.completed_at|datetimeformat if task.completed_at else '-' }}</td>
+          <td>
+            {% if task.creator_id == task.employee_id %}
+              <span class='text-muted'>Self</span>
+            {% else %}
+              <strong>{{ task.creator_name }}</strong>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<hr class='my-5'>
+<p class='text-muted text-center'>No tasks found in the system.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Edit Project{% endblock %}
+{% block content %}
+<div class='row'>
+  <div class='col-md-6 offset-md-3'>
+    <div class='card shadow-sm mt-4'>
+      <div class='card-header bg-primary text-white'>
+        <h4 class='mb-0'>Edit Project: {{ project.name }}</h4>
+      </div>
+      <div class='card-body'>
+        <form method='post'>
+          <div class='mb-3'>
+            <label class='form-label'>Project Name</label>
+            <input type='text' name='name' class='form-control' value='{{ project.name }}' required>
+          </div>
+          <div class='mb-3'>
+            <label class='form-label'>Client</label>
+            <input type='text' name='client' class='form-control' value='{{ project.client }}' required>
+          </div>
+          <div class='mb-3'>
+            <label class='form-label'>Start Date <span class='text-muted small'>(Optional)</span></label>
+            <input type='date' name='start_date' class='form-control' value='{{ project.start_date or "" }}'>
+          </div>
+          <div class='mb-3'>
+            <label class='form-label'>End Date <span class='text-muted small'>(Optional)</span></label>
+            <input type='date' name='end_date' class='form-control' value='{{ project.end_date or "" }}'>
+          </div>
+          <div class='d-flex justify-content-end'>
+            <a href='{{ url_for('hr_projects') }}' class='btn btn-secondary me-2'>Cancel</a>
+            <button type='submit' class='btn btn-primary'>Update Project</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

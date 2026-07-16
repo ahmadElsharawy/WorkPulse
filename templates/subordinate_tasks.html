@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Subordinate Tasks{% endblock %}
+{% block content %}
+<div class='d-flex justify-content-between align-items-center mb-4'>
+  <h2>Tasks for {{ subordinate.full_name }} ({{ subordinate.username }})</h2>
+  <div>
+    <a href='{{ url_for('add_subordinate_task', sub_id=subordinate.id) }}' class='btn btn-success'>Add Task</a>
+    <a href='{{ url_for('employee_dashboard') }}' class='btn btn-secondary ms-2'>Back to Dashboard</a>
+  </div>
+</div>
+<table class='table table-striped'>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Project</th>
+      <th>Description</th>
+      <th>Status</th>
+      <th>Created At</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for task in tasks %}
+    <tr>
+      <td>{{ task.title }}</td>
+      <td>
+        {% if task.project_name %}
+          <span class='badge bg-info text-dark'>{{ task.project_name }}</span>
+        {% else %}
+          <span class='text-muted'>-</span>
+        {% endif %}
+      </td>
+      <td>{{ task.description }}</td>
+      <td>
+        {% if task.status == 'Completed' %}
+          <span class='badge bg-success'>Completed</span>
+        {% else %}
+          <span class='badge bg-secondary'>{{ task.status }}</span>
+        {% endif %}
+      </td>
+      <td>{{ task.created_at|datetimeformat }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

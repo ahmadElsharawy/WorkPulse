@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Edit Employee{% endblock %}
+{% block content %}
+<h2>Edit Employee</h2>
+<form method='post'>
+  <div class='mb-3'>
+    <label class='form-label'>Full Name</label>
+    <input type='text' name='full_name' class='form-control' value='{{ user.full_name }}' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Position</label>
+    <input type='text' name='position' class='form-control' value='{{ user.position or "" }}' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Username</label>
+    <input type='text' name='username' class='form-control' value='{{ user.username }}' required>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Password</label>
+    <input type='password' name='password' class='form-control' placeholder='••••••••'>
+    <div class='form-text text-muted'>Leave blank to keep the current password. (اكتب كلمة مرور جديدة فقط في حال رغبتك في تغييرها، وإلا اترك الحقل فارغاً).</div>
+  </div>
+  <div class='mb-3'>
+    <label class='form-label'>Managers (optional - Hold Ctrl/Cmd to select multiple)</label>
+    <select name='managers' class='form-select' multiple>
+      {% for emp in employees %}
+        <option value='{{ emp.username }}' {% if emp.username in current_managers %}selected{% endif %}>{{ emp.full_name }} ({{ emp.username }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type='submit' class='btn btn-primary'>Update</button>
+  <a href='{{ url_for('hr_employees') }}' class='btn btn-secondary ms-2'>Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Manage Projects{% endblock %}
+{% block content %}
+<div class='d-flex justify-content-between align-items-center mb-4'>
+  <h2>Manage Projects</h2>
+  <a href='{{ url_for('hr_dashboard') }}' class='btn btn-secondary'>Back to Dashboard</a>
+</div>
+
+<div class='row mb-4'>
+  <div class='col-md-4'>
+    <div class='card shadow-sm'>
+      <div class='card-header bg-primary text-white'>Add New Project</div>
+      <div class='card-body'>
+        <form action='{{ url_for('add_project') }}' method='post'>
+          <div class='mb-3'>
+            <label class='form-label'>Project Name</label>
+            <input type='text' name='name' class='form-control' placeholder='e.g. Website Redesign' required>
+          </div>
+          <div class='mb-3'>
+            <label class='form-label'>Client</label>
+            <input type='text' name='client' class='form-control' placeholder='e.g. ACME Corp' required>
+          </div>
+          <div class='mb-3'>
+            <label class='form-label'>Start Date <span class='text-muted small'>(Optional)</span></label>
+            <input type='date' name='start_date' class='form-control'>
+          </div>
+          <div class='mb-3'>
+            <label class='form-label'>End Date <span class='text-muted small'>(Optional)</span></label>
+            <input type='date' name='end_date' class='form-control'>
+          </div>
+          <button type='submit' class='btn btn-success w-100'>Add Project</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class='col-md-8'>
+    <h3>Existing Projects</h3>
+    <table class='table table-striped table-bordered mt-3 shadow-sm'>
+      <thead class='table-light'>
+        <tr>
+          <th>Name</th>
+          <th>Client</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for proj in projects %}
+        <tr>
+          <td><strong>{{ proj.name }}</strong></td>
+          <td>{{ proj.client }}</td>
+          <td>{{ proj.start_date or '-' }}</td>
+          <td>{{ proj.end_date or '-' }}</td>
+          <td>
+            <a href='{{ url_for('edit_project', project_id=proj.id) }}' class='btn btn-primary btn-sm me-2'>Edit</a>
+            <form action='{{ url_for('delete_project', project_id=proj.id) }}' method='post' style='display:inline;'>
+              <button type='submit' class='btn btn-danger btn-sm' onclick="return confirm('Are you sure you want to delete this project? All associated tasks will be unlinked.');">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan='5' class='text-muted text-center py-3'>No projects found in the system.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
