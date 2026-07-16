@@ -145,7 +145,7 @@
             {% endif %}
           </td>
           <td>{{ task.title }}</td>
-          <td>{{ task.description }}</td>
+          <td class="task-desc-cell">{{ task.description }}</td>
           <td>
             {% if task.status == 'Running' %}
               <span class='badge bg-primary'><span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width: 0.5rem; height: 0.5rem; vertical-align: middle;"></span>Running</span>
