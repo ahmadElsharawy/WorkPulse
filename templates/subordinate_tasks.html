@@ -16,6 +16,7 @@
       <th>Description</th>
       <th>Status</th>
       <th>Created At</th>
+      <th>Running Duration</th>
     </tr>
   </thead>
   <tbody>
@@ -31,15 +32,57 @@
       </td>
       <td>{{ task.description }}</td>
       <td>
-        {% if task.status == 'Completed' %}
-          <span class='badge bg-success'>Completed</span>
+        {% if task.status == 'Running' %}
+          <span class='badge bg-primary'><span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width: 0.5rem; height: 0.5rem; vertical-align: middle;"></span>Running</span>
+        {% elif task.status == 'Pause' %}
+          <span class='badge bg-warning text-dark'>Pause</span>
+        {% elif task.status == 'Finish' %}
+          <span class='badge bg-success'>Finish</span>
         {% else %}
           <span class='badge bg-secondary'>{{ task.status }}</span>
         {% endif %}
       </td>
       <td>{{ task.created_at|datetimeformat }}</td>
+      <td>
+        <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
+      </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    function updateTimers() {
+        const now = new Date();
+        document.querySelectorAll(".duration-display").forEach(function(el) {
+            const status = el.getAttribute("data-status");
+            if (status !== "Running") return;
+            
+            const lastStartedStr = el.getAttribute("data-last-started");
+            if (!lastStartedStr) return;
+            
+            const lastStarted = new Date(lastStartedStr + "Z");
+            const accumulated = parseInt(el.getAttribute("data-accumulated") || "0", 10);
+            
+            const elapsedSeconds = Math.max(0, Math.floor((now - lastStarted) / 1000));
+            const totalSeconds = accumulated + elapsedSeconds;
+            
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            let formatted = "";
+            if (hours > 0) formatted += hours + "h ";
+            if (minutes > 0) formatted += minutes + "m ";
+            formatted += seconds + "s";
+            
+            el.textContent = formatted;
+        });
+    }
+    
+    setInterval(updateTimers, 1000);
+    updateTimers();
+});
+</script>
 {% endblock %}

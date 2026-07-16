@@ -15,7 +15,7 @@
           <th>Description</th>
           <th>Status</th>
           <th>Created At</th>
-          <th>Completed At</th>
+          <th>Running Duration</th>
           <th>Assigned By</th>
           <th>Actions</th>
         </tr>
@@ -35,16 +35,16 @@
           <td>
             <form action="{{ url_for('update_task_status', task_id=task.id) }}" method="post" style="display:inline;">
               <select name="status" class="form-select form-select-sm" data-old-status="{{ task.status }}" onchange="confirmStatusChange(this)">
-                {% for i in range(0, 100, 10) %}
-                  {% set pct = i ~ '%' %}
-                  <option value="{{ pct }}" {% if task.status == pct %}selected{% endif %}>{{ pct }}</option>
-                {% endfor %}
-                <option value="Completed" {% if task.status == 'Completed' %}selected{% endif %}>Completed</option>
+                <option value="Pause" {% if task.status == 'Pause' %}selected{% endif %}>Pause</option>
+                <option value="Running" {% if task.status == 'Running' %}selected{% endif %}>Running</option>
+                <option value="Finish" {% if task.status == 'Finish' %}selected{% endif %}>Finish</option>
               </select>
             </form>
           </td>
           <td>{{ task.created_at|datetimeformat }}</td>
-          <td>{{ task.completed_at|datetimeformat if task.completed_at else '-' }}</td>
+          <td>
+            <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
+          </td>
           <td>
             {% if task.creator_id == current_user.id %}
               <span class='text-muted'>Self</span>
@@ -101,7 +101,7 @@
             <th>Description</th>
             <th>Status</th>
             <th>Created At</th>
-            <th>Completed At</th>
+            <th>Running Duration</th>
           </tr>
         </thead>
         <tbody>
@@ -118,14 +118,20 @@
             <td>{{ task.title }}</td>
             <td>{{ task.description }}</td>
             <td>
-              {% if task.status == 'Completed' %}
-                <span class='badge bg-success'>Completed</span>
+              {% if task.status == 'Running' %}
+                <span class='badge bg-primary'><span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width: 0.5rem; height: 0.5rem; vertical-align: middle;"></span>Running</span>
+              {% elif task.status == 'Pause' %}
+                <span class='badge bg-warning text-dark'>Pause</span>
+              {% elif task.status == 'Finish' %}
+                <span class='badge bg-success'>Finish</span>
               {% else %}
                 <span class='badge bg-secondary'>{{ task.status }}</span>
               {% endif %}
             </td>
             <td>{{ task.created_at|datetimeformat }}</td>
-            <td>{{ task.completed_at|datetimeformat if task.completed_at else '-' }}</td>
+            <td>
+              <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -139,16 +145,40 @@
 
 <script>
 function confirmStatusChange(selectElement) {
-    const oldStatus = selectElement.getAttribute('data-old-status');
-    const newStatus = selectElement.value;
-    if (oldStatus === 'Completed' && newStatus !== 'Completed') {
-        const confirmClear = confirm("هل أنت متأكد؟ سيتم حذف تاريخ اكتمال المهمة.");
-        if (!confirmClear) {
-            selectElement.value = 'Completed';
-            return;
-        }
-    }
     selectElement.form.submit();
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    function updateTimers() {
+        const now = new Date();
+        document.querySelectorAll(".duration-display").forEach(function(el) {
+            const status = el.getAttribute("data-status");
+            if (status !== "Running") return;
+            
+            const lastStartedStr = el.getAttribute("data-last-started");
+            if (!lastStartedStr) return;
+            
+            const lastStarted = new Date(lastStartedStr + "Z");
+            const accumulated = parseInt(el.getAttribute("data-accumulated") || "0", 10);
+            
+            const elapsedSeconds = Math.max(0, Math.floor((now - lastStarted) / 1000));
+            const totalSeconds = accumulated + elapsedSeconds;
+            
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            let formatted = "";
+            if (hours > 0) formatted += hours + "h ";
+            if (minutes > 0) formatted += minutes + "m ";
+            formatted += seconds + "s";
+            
+            el.textContent = formatted;
+        });
+    }
+    
+    setInterval(updateTimers, 1000);
+    updateTimers();
+});
 </script>
 {% endblock %}

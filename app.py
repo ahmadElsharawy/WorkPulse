@@ -35,6 +35,69 @@ def datetimeformat(value):
     except Exception:
         return value
 
+@app.template_filter('format_duration')
+def format_duration(task):
+    try:
+        duration = task['running_duration']
+        if duration is None:
+            duration = 0
+    except Exception:
+        duration = 0
+        
+    try:
+        status = task['status']
+        last_started_at = task['last_started_at']
+    except Exception:
+        status = None
+        last_started_at = None
+        
+    if status == 'Running' and last_started_at:
+        try:
+            started_dt = datetime.fromisoformat(last_started_at)
+            elapsed = (datetime.utcnow() - started_dt).total_seconds()
+            duration += max(0, int(elapsed))
+        except Exception:
+            pass
+            
+    hours = duration // 3600
+    minutes = (duration % 3600) // 60
+    seconds = duration % 60
+    
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0:
+        parts.append(f"{minutes}m")
+    if seconds > 0 or not parts:
+        parts.append(f"{seconds}s")
+        
+    return " ".join(parts)
+
+@app.template_filter('total_seconds')
+def total_seconds(task):
+    try:
+        duration = task['running_duration']
+        if duration is None:
+            duration = 0
+    except Exception:
+        duration = 0
+        
+    try:
+        status = task['status']
+        last_started_at = task['last_started_at']
+    except Exception:
+        status = None
+        last_started_at = None
+        
+    if status == 'Running' and last_started_at:
+        try:
+            started_dt = datetime.fromisoformat(last_started_at)
+            elapsed = (datetime.utcnow() - started_dt).total_seconds()
+            duration += max(0, int(elapsed))
+        except Exception:
+            pass
+    return duration
+
 # ---------- Database helpers ----------
 
 def get_db():
@@ -92,7 +155,8 @@ def init_db():
             description TEXT,
             status TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            completed_at TEXT,
+            running_duration INTEGER DEFAULT 0,
+            last_started_at TEXT,
             creator_id INTEGER NOT NULL,
             FOREIGN KEY(employee_id) REFERENCES users(id),
             FOREIGN KEY(creator_id) REFERENCES users(id),
@@ -132,10 +196,10 @@ def seed_data():
         db.execute('INSERT INTO employee_managers (employee_id, manager_id) VALUES (?,?)', (ahmed['id'], badr['id']))
         
         now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
-        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, creator_id) VALUES (?,?,?,?,?,?,?)',
-                   (ahmed['id'], proj_a['id'] if proj_a else None, 'Task One', 'First sample task', '0%', now, ahmed['id']))
-        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, creator_id) VALUES (?,?,?,?,?,?,?)',
-                   (ahmed['id'], proj_a['id'] if proj_a else None, 'Task Two', 'Second sample task', 'Completed', now, badr['id']))
+        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                   (ahmed['id'], proj_a['id'] if proj_a else None, 'Task One', 'First sample task', 'Pause', now, 0, ahmed['id']))
+        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                   (ahmed['id'], proj_a['id'] if proj_a else None, 'Task Two', 'Second sample task', 'Finish', now, 7200, badr['id']))
         
     db.commit()
 
@@ -449,8 +513,8 @@ def add_task():
         description = request.form.get('description', '')
         project_id = int(request.form['project_id'])
         now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
-        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, creator_id) VALUES (?,?,?,?,?,?,?)',
-                   (current_user.id, project_id, title, description, '0%', now, current_user.id))
+        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                   (current_user.id, project_id, title, description, 'Pause', now, 0, current_user.id))
         db.commit()
         flash('Task added.', 'success')
         return redirect(url_for('employee_dashboard'))
@@ -474,18 +538,33 @@ def edit_task(task_id):
         description = request.form['description']
         new_status = request.form['status']
         project_id = int(request.form['project_id'])
-        old_status = task['status']
         
-        if new_status == 'Completed' and old_status != 'Completed':
-            completed_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
-            db.execute('UPDATE tasks SET title = ?, description = ?, status = ?, completed_at = ?, project_id = ? WHERE id = ?',
-                       (title, description, new_status, completed_at, project_id, task_id))
-        elif new_status != 'Completed' and old_status == 'Completed':
-            db.execute('UPDATE tasks SET title = ?, description = ?, status = ?, completed_at = NULL, project_id = ? WHERE id = ?',
-                       (title, description, new_status, project_id, task_id))
-        else:
-            db.execute('UPDATE tasks SET title = ?, description = ?, status = ?, project_id = ? WHERE id = ?',
-                       (title, description, new_status, project_id, task_id))
+        old_status = task['status']
+        old_running_duration = task['running_duration'] or 0
+        old_last_started_at = task['last_started_at']
+        
+        new_running_duration = old_running_duration
+        new_last_started_at = old_last_started_at
+        now_utc = datetime.utcnow()
+        
+        # Status change logic
+        if old_status == 'Running' and new_status != 'Running':
+            if old_last_started_at:
+                try:
+                    started_dt = datetime.fromisoformat(old_last_started_at)
+                    elapsed = (now_utc - started_dt).total_seconds()
+                    new_running_duration = old_running_duration + max(0, int(elapsed))
+                except Exception:
+                    pass
+            new_last_started_at = None
+        elif old_status != 'Running' and new_status == 'Running':
+            new_last_started_at = now_utc.isoformat()
+            
+        db.execute('''
+            UPDATE tasks 
+            SET title = ?, description = ?, status = ?, running_duration = ?, last_started_at = ?, project_id = ?
+            WHERE id = ? AND employee_id = ?
+        ''', (title, description, new_status, new_running_duration, new_last_started_at, project_id, task_id, current_user.id))
         db.commit()
         flash('Task updated.', 'success')
         return redirect(url_for('employee_dashboard'))
@@ -497,21 +576,39 @@ def edit_task(task_id):
 @role_required('Employee')
 def update_task_status(task_id):
     db = get_db()
-    task = db.execute('SELECT creator_id, status FROM tasks WHERE id = ? AND employee_id = ?', (task_id, current_user.id)).fetchone()
+    task = db.execute('SELECT status, running_duration, last_started_at FROM tasks WHERE id = ? AND employee_id = ?', (task_id, current_user.id)).fetchone()
     if not task:
         flash('Task not found.', 'danger')
         return redirect(url_for('employee_dashboard'))
     new_status = request.form.get('status')
-    valid_statuses = [f"{i}%" for i in range(0, 100, 10)] + ['Completed']
+    valid_statuses = ['Running', 'Pause', 'Finish']
     if new_status in valid_statuses:
         old_status = task['status']
-        if new_status == 'Completed' and old_status != 'Completed':
-            completed_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
-            db.execute('UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?', (new_status, completed_at, task_id))
-        elif new_status != 'Completed' and old_status == 'Completed':
-            db.execute('UPDATE tasks SET status = ?, completed_at = NULL WHERE id = ?', (new_status, task_id))
-        else:
-            db.execute('UPDATE tasks SET status = ? WHERE id = ?', (new_status, task_id))
+        old_running_duration = task['running_duration'] or 0
+        old_last_started_at = task['last_started_at']
+        
+        new_running_duration = old_running_duration
+        new_last_started_at = old_last_started_at
+        now_utc = datetime.utcnow()
+        
+        # Status change logic
+        if old_status == 'Running' and new_status != 'Running':
+            if old_last_started_at:
+                try:
+                    started_dt = datetime.fromisoformat(old_last_started_at)
+                    elapsed = (now_utc - started_dt).total_seconds()
+                    new_running_duration = old_running_duration + max(0, int(elapsed))
+                except Exception:
+                    pass
+            new_last_started_at = None
+        elif old_status != 'Running' and new_status == 'Running':
+            new_last_started_at = now_utc.isoformat()
+            
+        db.execute('''
+            UPDATE tasks 
+            SET status = ?, running_duration = ?, last_started_at = ?
+            WHERE id = ? AND employee_id = ?
+        ''', (new_status, new_running_duration, new_last_started_at, task_id, current_user.id))
         db.commit()
         flash('Task status updated.', 'success')
     else:
@@ -567,8 +664,8 @@ def add_subordinate_task(sub_id):
         description = request.form.get('description', '')
         project_id = int(request.form['project_id'])
         now = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
-        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, creator_id) VALUES (?,?,?,?,?,?,?)',
-                   (sub_id, project_id, title, description, '0%', now, current_user.id))
+        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                   (sub_id, project_id, title, description, 'Pause', now, 0, current_user.id))
         db.commit()
         flash('Task assigned to employee.', 'success')
         return redirect(url_for('view_subordinate_tasks', sub_id=sub_id))

@@ -22,11 +22,9 @@
   <div class="mb-3">
     <label for="status" class="form-label">Status</label>
     <select class="form-select" id="status" name="status">
-      {% for i in range(0, 100, 10) %}
-        {% set pct = i ~ '%' %}
-        <option value="{{ pct }}" {% if task.status == pct %}selected{% endif %}>{{ pct }}</option>
-      {% endfor %}
-      <option value="Completed" {% if task.status == 'Completed' %}selected{% endif %}>Completed</option>
+      <option value="Pause" {% if task.status == 'Pause' %}selected{% endif %}>Pause</option>
+      <option value="Running" {% if task.status == 'Running' %}selected{% endif %}>Running</option>
+      <option value="Finish" {% if task.status == 'Finish' %}selected{% endif %}>Finish</option>
     </select>
   </div>
   <button type="submit" class="btn btn-primary">Update Task</button>
