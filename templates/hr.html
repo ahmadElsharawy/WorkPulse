@@ -1,234 +1,98 @@
 {% extends 'base.html' %}
-{% block title %}HR Dashboard{% endblock %}
+{% block title %}HR Dashboard - WorkPulse{% endblock %}
 {% block content %}
-<div class='d-flex justify-content-between align-items-center mb-4'>
-  <h2>HR Dashboard</h2>
-  <div>
-    <a href='{{ url_for('hr_employees') }}' class='btn btn-primary me-2'>Manage Employees</a>
-    <a href='{{ url_for('hr_projects') }}' class='btn btn-secondary'>Manage Projects</a>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-5 border-bottom pb-3">
+    <h2 class="text-primary mb-0 fw-bold">HR Management Dashboard</h2>
+    <span class="badge bg-secondary p-2">Administrator Panel</span>
   </div>
-</div>
 
-<div class="card mb-4 shadow-sm">
-  <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">Filter Live Tracking Tasks</h5>
-    <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="true" aria-controls="filterCollapse">
-      Toggle Filters
-    </button>
+  <!-- Quick Metrics Section -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm bg-primary text-white h-100">
+        <div class="card-body d-flex align-items-center justify-content-between p-4">
+          <div>
+            <h6 class="text-uppercase mb-1" style="font-size: 0.8rem; letter-spacing: 1px; opacity: 0.8;">Total Employees</h6>
+            <h2 class="mb-0 fw-bold">{{ total_employees }}</h2>
+          </div>
+          <div class="bg-white bg-opacity-25 rounded p-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-people" viewBox="0 0 16 16">
+              <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.004.01-.154.02-.347.017-.34.05-.733.09-1.102A13.654 13.654 0 0 1 7 10c0-.528.06-1.07.15-1.593.08-.475.203-.9.357-1.25.13-.298.283-.49.467-.583.456-.23 1.092-.3 1.764-.3.672 0 1.308.07 1.764.3.184.093.337.285.467.582.154.35.278.775.357 1.25.09.522.15 1.065.15 1.593 0 .428-.047.828-.09 1.102a13.272 13.272 0 0 1-.09 1.102l-.02.348h-.02zM8 5a2 2 0 1 1 0-4 2 2 0 0 1 0 4"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm bg-success text-white h-100">
+        <div class="card-body d-flex align-items-center justify-content-between p-4">
+          <div>
+            <h6 class="text-uppercase mb-1" style="font-size: 0.8rem; letter-spacing: 1px; opacity: 0.8;">Total Projects</h6>
+            <h2 class="mb-0 fw-bold">{{ total_projects }}</h2>
+          </div>
+          <div class="bg-white bg-opacity-25 rounded p-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-briefcase" viewBox="0 0 16 16">
+              <path d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v8A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5m1.886 6.914L15 7.151V12.5a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V7.15l6.614 1.764a1.5 1.5 0 0 0 .772 0zM1.5 4h13a.5.5 0 0 1 .5.5v1.616L8.129 7.948a.5.5 0 0 1-.258 0L1 6.116V4.5a.5.5 0 0 1 .5-.5"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm bg-info text-dark h-100">
+        <div class="card-body d-flex align-items-center justify-content-between p-4">
+          <div>
+            <h6 class="text-uppercase mb-1" style="font-size: 0.8rem; letter-spacing: 1px; opacity: 0.8;">Active Tasks (Running)</h6>
+            <h2 class="mb-0 fw-bold">{{ active_tasks }}</h2>
+          </div>
+          <div class="bg-dark bg-opacity-10 rounded p-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-play-circle" viewBox="0 0 16 16">
+              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+              <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="collapse show" id="filterCollapse">
-    <div class="card-body">
-      <form method="GET" action="{{ url_for('hr_dashboard') }}">
-        <div class="row g-3">
-          
-          <!-- Employees Filter -->
-          <div class="col-md-3">
-            <label class="form-label fw-bold">Employees</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
-              {% for emp in employees_list %}
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="employees" value="{{ emp.id }}" id="emp_{{ emp.id }}"
-                    {% if emp.id in selected_employees %}checked{% endif %}>
-                  <label class="form-check-label text-truncate d-block" for="emp_{{ emp.id }}" style="max-width: 100%;">
-                    {{ emp.full_name }}
-                  </label>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
-          
-          <!-- Projects Filter -->
-          <div class="col-md-3">
-            <label class="form-label fw-bold">Projects</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="projects" value="none" id="proj_none"
-                  {% if 'none' in selected_projects %}checked{% endif %}>
-                <label class="form-check-label" for="proj_none">
-                  <em>No Project</em>
-                </label>
-              </div>
-              {% for proj in projects_list %}
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="projects" value="{{ proj.id }}" id="proj_{{ proj.id }}"
-                    {% if proj.id in selected_projects %}checked{% endif %}>
-                  <label class="form-check-label text-truncate d-block" for="proj_{{ proj.id }}" style="max-width: 100%;">
-                    {{ proj.name }}
-                  </label>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
-          
-          <!-- Status Filter -->
-          <div class="col-md-2">
-            <label class="form-label fw-bold">Status</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
-              {% for status in ['Running', 'Pause', 'Finish'] %}
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="statuses" value="{{ status }}" id="status_{{ status }}"
-                    {% if status in selected_statuses %}checked{% endif %}>
-                  <label class="form-check-label" for="status_{{ status }}">
-                    {{ status }}
-                  </label>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
 
-          <!-- Assigned By Filter -->
-          <div class="col-md-2">
-            <label class="form-label fw-bold">Assigned By</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
-              {% for creator in creators_list %}
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" name="creators" value="{{ creator.id }}" id="creator_{{ creator.id }}"
-                    {% if creator.id in selected_creators %}checked{% endif %}>
-                  <label class="form-check-label text-truncate d-block" for="creator_{{ creator.id }}" style="max-width: 100%;">
-                    {{ creator.full_name }}
-                  </label>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
+  <!-- Navigation Grid Section -->
+  <div class="row g-4">
+    <!-- Manage Employees Card -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body p-4 d-flex flex-column">
+          <h5 class="card-title fw-bold text-dark mb-3">Manage Employees</h5>
+          <p class="card-text text-muted flex-grow-1">Add, update, or remove company employees. Link employees to their respective direct managers and edit position details.</p>
+          <a href="{{ url_for('hr_employees') }}" class="btn btn-outline-primary mt-3 py-2 w-100 fw-bold">Go to Employees</a>
+        </div>
+      </div>
+    </div>
 
-          <!-- Created At Date Range -->
-          <div class="col-md-2">
-            <label class="form-label fw-bold">Created At</label>
-            <div class="mb-2">
-              <input type="date" class="form-control form-control-sm" name="created_from" value="{{ created_from }}" placeholder="From">
-              <span class="text-muted small" style="font-size: 0.75rem;">From</span>
-            </div>
-            <div>
-              <input type="date" class="form-control form-control-sm" name="created_to" value="{{ created_to }}" placeholder="To">
-              <span class="text-muted small" style="font-size: 0.75rem;">To</span>
-            </div>
-          </div>
-          
+    <!-- Manage Projects Card -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body p-4 d-flex flex-column">
+          <h5 class="card-title fw-bold text-dark mb-3">Manage Projects</h5>
+          <p class="card-text text-muted flex-grow-1">Create and manage client projects. Set project dates, assign clients, and track ongoing corporate initiatives.</p>
+          <a href="{{ url_for('hr_projects') }}" class="btn btn-outline-success mt-3 py-2 w-100 fw-bold">Go to Projects</a>
         </div>
-        <div class="d-flex justify-content-end gap-2 mt-3">
-          <a href="{{ url_for('hr_dashboard') }}" class="btn btn-secondary btn-sm">Reset Filters</a>
-          <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+      </div>
+    </div>
+
+    <!-- Live Task Tracking Card -->
+    <div class="col-md-4">
+      <div class="card h-100 shadow-sm border-0 bg-light">
+        <div class="card-body p-4 d-flex flex-column">
+          <h5 class="card-title fw-bold text-dark mb-3">Live Task Tracking</h5>
+          <p class="card-text text-muted flex-grow-1">Monitor company-wide task durations in real time. Apply filters by employee, project, status, assigned creator, and date.</p>
+          <a href="{{ url_for('hr_tracking') }}" class="btn btn-primary mt-3 py-2 w-100 fw-bold">Open Live Tracking</a>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>
-
-<div id="live-tasks-wrapper">
-{% if tasks %}
-<div class='row mt-4'>
-  <div class='col-12'>
-    <h3 class='mb-4'>All Employee Tasks Live Tracking</h3>
-    <table class='table table-striped'>
-      <thead>
-        <tr>
-          <th>Employee Name</th>
-          <th>Project</th>
-          <th>Task Title</th>
-          <th>Description</th>
-          <th>Status</th>
-          <th>Created At</th>
-          <th>Running Duration</th>
-          <th>Assigned By</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for task in tasks %}
-        <tr>
-          <td><strong>{{ task.employee_name }}</strong></td>
-          <td>
-            {% if task.project_name %}
-              <span class='badge bg-info text-dark'>{{ task.project_name }}</span>
-            {% else %}
-              <span class='text-muted'>-</span>
-            {% endif %}
-          </td>
-          <td>{{ task.title }}</td>
-          <td class="task-desc-cell">{{ task.description }}</td>
-          <td>
-            {% if task.status == 'Running' %}
-              <span class='badge bg-primary'><span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width: 0.5rem; height: 0.5rem; vertical-align: middle;"></span>Running</span>
-            {% elif task.status == 'Pause' %}
-              <span class='badge bg-warning text-dark'>Pause</span>
-            {% elif task.status == 'Finish' %}
-              <span class='badge bg-success'>Finish</span>
-            {% else %}
-              <span class='badge bg-secondary'>{{ task.status }}</span>
-            {% endif %}
-          </td>
-          <td>{{ task.created_at|datetimeformat }}</td>
-          <td>
-            <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
-          </td>
-          <td>
-            {% if task.creator_id == task.employee_id %}
-              <span class='text-muted'>Self</span>
-            {% else %}
-              <strong>{{ task.creator_name }}</strong>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% else %}
-<hr class='my-5'>
-<p class='text-muted text-center'>No tasks found in the system.</p>
-{% endif %}
-</div>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    function updateTimers() {
-        const now = new Date();
-        document.querySelectorAll(".duration-display").forEach(function(el) {
-            const status = el.getAttribute("data-status");
-            if (status !== "Running") return;
-            
-            const lastStartedStr = el.getAttribute("data-last-started");
-            if (!lastStartedStr) return;
-            
-            const lastStarted = new Date(lastStartedStr + "Z");
-            const accumulated = parseInt(el.getAttribute("data-accumulated") || "0", 10);
-            
-            const elapsedSeconds = Math.max(0, Math.floor((now - lastStarted) / 1000));
-            const totalSeconds = accumulated + elapsedSeconds;
-            
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            
-            let formatted = "";
-            if (hours > 0) formatted += hours + "h ";
-            if (minutes > 0) formatted += minutes + "m ";
-            formatted += seconds + "s";
-            
-            el.textContent = formatted;
-        });
-    }
-    
-    function pollTasks() {
-        fetch(window.location.href)
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const newWrapper = doc.getElementById('live-tasks-wrapper');
-                const oldWrapper = document.getElementById('live-tasks-wrapper');
-                if (newWrapper && oldWrapper) {
-                    oldWrapper.innerHTML = newWrapper.innerHTML;
-                    updateTimers();
-                }
-            })
-            .catch(err => console.error("Error updating live list:", err));
-    }
-    
-    setInterval(updateTimers, 1000);
-    setInterval(pollTasks, 5000); // refresh the list every 5 seconds
-    updateTimers();
-});
-</script>
 {% endblock %}

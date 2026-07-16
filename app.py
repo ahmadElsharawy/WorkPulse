@@ -318,6 +318,20 @@ def change_password():
 @role_required('HR')
 def hr_dashboard():
     db = get_db()
+    total_employees = db.execute("SELECT COUNT(*) FROM users WHERE role = 'Employee'").fetchone()[0]
+    total_projects = db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+    active_tasks = db.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Running'").fetchone()[0]
+    return render_template(
+        'hr.html',
+        total_employees=total_employees,
+        total_projects=total_projects,
+        active_tasks=active_tasks
+    )
+
+@app.route('/hr/tracking')
+@role_required('HR')
+def hr_tracking():
+    db = get_db()
     
     # Get filter inputs
     selected_employees = [int(x) for x in request.args.getlist('employees') if x.isdigit()]
@@ -399,7 +413,7 @@ def hr_dashboard():
     creators_list = db.execute("SELECT DISTINCT u.id, u.full_name, u.username FROM users u JOIN tasks t ON t.creator_id = u.id ORDER BY u.full_name").fetchall()
     
     return render_template(
-        'hr.html', 
+        'hr_tracking.html', 
         tasks=tasks,
         employees_list=employees_list,
         projects_list=projects_list,
