@@ -741,6 +741,17 @@ def delete_task(task_id):
         return redirect(url_for('view_subordinate_tasks', sub_id=task['employee_id']))
     return redirect(url_for('employee_dashboard'))
 
+@app.route('/employee/subordinates')
+@role_required('Employee')
+def view_subordinates():
+    db = get_db()
+    subordinates = db.execute('''
+        SELECT u.* FROM users u
+        JOIN employee_managers em ON u.id = em.employee_id
+        WHERE em.manager_id = ?
+    ''', (current_user.id,)).fetchall()
+    return render_template('subordinates.html', subordinates=subordinates)
+
 # ----- Subordinate Tasks -----
 @app.route('/employee/subordinate/<int:sub_id>/tasks')
 @role_required('Employee')

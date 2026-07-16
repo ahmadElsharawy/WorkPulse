@@ -2,10 +2,15 @@
 {% block title %}Employee Dashboard{% endblock %}
 {% block content %}
 <div class='row'>
-  <div class='col-md-8'>
+  <div class='col-12'>
     <div class='d-flex justify-content-between align-items-center mb-4'>
       <h2>My Tasks</h2>
-      <a href='{{ url_for('add_task') }}' class='btn btn-success'>Add Task</a>
+      <div>
+        {% if subordinates %}
+          <a href='{{ url_for('view_subordinates') }}' class='btn btn-primary me-2'>My Team</a>
+        {% endif %}
+        <a href='{{ url_for('add_task') }}' class='btn btn-success'>Add Task</a>
+      </div>
     </div>
     <table class='table table-striped'>
       <thead>
@@ -67,23 +72,6 @@
       </tbody>
     </table>
   </div>
-
-  {% if subordinates %}
-  <div class='col-md-4'>
-    <h3 class='mb-4'>Employees Managed by Me</h3>
-    <ul class='list-group'>
-      {% for sub in subordinates %}
-        <li class='list-group-item d-flex justify-content-between align-items-center'>
-          <span>
-            <strong>{{ sub.full_name }}</strong><br>
-            <small class='text-muted'>@{{ sub.username }}</small>
-          </span>
-          <a href='{{ url_for('view_subordinate_tasks', sub_id=sub.id) }}' class='btn btn-primary btn-sm'>View Tasks</a>
-        </li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
 </div>
 
 {% if subordinates %}
