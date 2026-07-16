@@ -586,13 +586,70 @@ def delete_employee(user_id):
 @role_required('Employee')
 def employee_dashboard():
     db = get_db()
-    tasks = db.execute('''
+    
+    # Get filter inputs
+    selected_projects = []
+    for x in request.args.getlist('projects'):
+        if x == 'none':
+            selected_projects.append('none')
+        elif x.isdigit():
+            selected_projects.append(int(x))
+            
+    selected_statuses = request.args.getlist('statuses')
+    created_from = request.args.get('created_from', '').strip()
+    created_to = request.args.get('created_to', '').strip()
+    selected_creators = [int(x) for x in request.args.getlist('creators') if x.isdigit()]
+    
+    # Build query for employee's own tasks
+    query = '''
         SELECT t.*, u.full_name AS creator_name, p.name AS project_name
         FROM tasks t
         LEFT JOIN users u ON t.creator_id = u.id
         LEFT JOIN projects p ON t.project_id = p.id
         WHERE t.employee_id = ?
-    ''', (current_user.id,)).fetchall()
+    '''
+    params = [current_user.id]
+    
+    if selected_projects:
+        proj_conds = []
+        has_none = False
+        val_projs = []
+        for p in selected_projects:
+            if p == 'none':
+                has_none = True
+            else:
+                val_projs.append(p)
+        if val_projs:
+            placeholders = ','.join('?' for _ in val_projs)
+            proj_conds.append(f"t.project_id IN ({placeholders})")
+            params.extend(val_projs)
+        if has_none:
+            proj_conds.append("t.project_id IS NULL")
+        if proj_conds:
+            query += f" AND ({' OR '.join(proj_conds)})"
+            
+    if selected_statuses:
+        placeholders = ','.join('?' for _ in selected_statuses)
+        query += f" AND t.status IN ({placeholders})"
+        params.extend(selected_statuses)
+        
+    if created_from:
+        query += " AND t.created_at >= ?"
+        params.append(f"{created_from} 00:00")
+        
+    if created_to:
+        query += " AND t.created_at <= ?"
+        params.append(f"{created_to} 23:59")
+        
+    if selected_creators:
+        placeholders = ','.join('?' for _ in selected_creators)
+        query += f" AND t.creator_id IN ({placeholders})"
+        params.extend(selected_creators)
+        
+    query += " ORDER BY t.created_at DESC"
+    
+    tasks = db.execute(query, params).fetchall()
+    
     # List employees managed by the current employee
     subordinates = db.execute('''
         SELECT u.* FROM users u
@@ -610,7 +667,29 @@ def employee_dashboard():
         ORDER BY t.created_at DESC
     ''', (current_user.id,)).fetchall()
     
-    return render_template('employee.html', tasks=tasks, subordinates=subordinates, subordinate_tasks=subordinate_tasks)
+    # Fetch options for filters specifically for this employee's tasks
+    projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
+    creators_list = db.execute('''
+        SELECT DISTINCT u.id, u.full_name, u.username 
+        FROM users u 
+        JOIN tasks t ON t.creator_id = u.id 
+        WHERE t.employee_id = ? 
+        ORDER BY u.full_name
+    ''', (current_user.id,)).fetchall()
+    
+    return render_template(
+        'employee.html', 
+        tasks=tasks, 
+        subordinates=subordinates, 
+        subordinate_tasks=subordinate_tasks,
+        projects_list=projects_list,
+        creators_list=creators_list,
+        selected_projects=selected_projects,
+        selected_statuses=selected_statuses,
+        created_from=created_from,
+        created_to=created_to,
+        selected_creators=selected_creators
+    )
 
 @app.route('/employee/add', methods=['GET', 'POST'])
 @role_required('Employee')
