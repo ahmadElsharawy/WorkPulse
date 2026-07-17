@@ -170,6 +170,40 @@
     </table>
   </div>
 </div>
+
+<!-- Pagination controls -->
+{% if total_pages > 1 %}
+<nav class="d-flex justify-content-between align-items-center mt-3">
+  <div class="text-muted small">
+    Showing tasks <strong>{{ showing_from }}</strong> to <strong>{{ showing_to }}</strong> of <strong>{{ total_tasks }}</strong>
+  </div>
+  <ul class="pagination pagination-sm mb-0">
+    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ page_url(1) }}">First</a>
+    </li>
+    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ page_url(page - 1) }}">Previous</a>
+    </li>
+    
+    {% for p in page_range %}
+      <li class="page-item {% if p == page %}active{% endif %}">
+        <a class="page-link" href="{{ page_url(p) }}">{{ p }}</a>
+      </li>
+    {% endfor %}
+    
+    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+      <a class="page-link" href="{{ page_url(page + 1) }}">Next</a>
+    </li>
+    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+      <a class="page-link" href="{{ page_url(total_pages) }}">Last</a>
+    </li>
+  </ul>
+</nav>
+{% else %}
+<div class="text-muted small mt-2">
+  Showing all <strong>{{ total_tasks }}</strong> tasks
+</div>
+{% endif %}
 {% else %}
 <hr class='my-5'>
 <p class='text-muted text-center'>No tasks found in the system.</p>

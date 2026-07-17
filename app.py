@@ -136,6 +136,16 @@ def init_db():
             PRIMARY KEY (employee_id, manager_id)
         )
     ''')
+    # Join table for many-to-many employee-project relationship
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS employee_projects (
+            employee_id INTEGER NOT NULL,
+            project_id INTEGER NOT NULL,
+            FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            PRIMARY KEY (employee_id, project_id)
+        )
+    ''')
     # Projects table
     db.execute('''
         CREATE TABLE IF NOT EXISTS projects (
@@ -180,6 +190,7 @@ def seed_data():
     db.execute('INSERT INTO projects (name, client, start_date, end_date) VALUES (?,?,?,?)', ('Project Alpha', 'Company A', '2026-01-01', '2026-12-31'))
     db.execute('INSERT INTO projects (name, client, start_date, end_date) VALUES (?,?,?,?)', ('Project Beta', 'Company B', '2026-06-01', '2026-11-30'))
     proj_a = db.execute('SELECT id FROM projects WHERE name = ?', ('Project Alpha',)).fetchone()
+    proj_b = db.execute('SELECT id FROM projects WHERE name = ?', ('Project Beta',)).fetchone()
     
     # Employees (who can also be managers)
     ahmed_pwd = bcrypt.generate_password_hash('123').decode('utf-8')
@@ -196,6 +207,16 @@ def seed_data():
     if ahmed and badr:
         db.execute('INSERT INTO employee_managers (employee_id, manager_id) VALUES (?,?)', (ahmed['id'], badr['id']))
         
+        # Assign Ahmed to Project Alpha
+        if proj_a:
+            db.execute('INSERT OR IGNORE INTO employee_projects (employee_id, project_id) VALUES (?,?)', (ahmed['id'], proj_a['id']))
+            
+        # Assign Badr to Project Alpha and Beta
+        if proj_a:
+            db.execute('INSERT OR IGNORE INTO employee_projects (employee_id, project_id) VALUES (?,?)', (badr['id'], proj_a['id']))
+        if proj_b:
+            db.execute('INSERT OR IGNORE INTO employee_projects (employee_id, project_id) VALUES (?,?)', (badr['id'], proj_b['id']))
+            
         now = datetime.now().strftime('%Y-%m-%d %H:%M')
         db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
                    (ahmed['id'], proj_a['id'] if proj_a else None, 'Task One', 'First sample task', 'Pause', now, 0, ahmed['id']))
@@ -210,6 +231,7 @@ def seed_mock_data():
     # Clear existing data
     db.execute('DELETE FROM tasks')
     db.execute('DELETE FROM employee_managers')
+    db.execute('DELETE FROM employee_projects')
     db.execute('DELETE FROM users WHERE role = "Employee"')
     db.execute('DELETE FROM projects')
     db.commit()
@@ -248,13 +270,26 @@ def seed_mock_data():
                        (emp_id, mgr))
     db.commit()
 
+    # Assign projects to employees (1 to 5 random projects)
+    for emp_id in employee_ids:
+        emp_projects = random.sample(project_ids, k=random.randint(1, 5))
+        for p_id in emp_projects:
+            db.execute('INSERT INTO employee_projects (employee_id, project_id) VALUES (?,?)', (emp_id, p_id))
+    db.commit()
+
     # Create tasks
     now = datetime.utcnow()
     for emp_id in employee_ids:
+        # Fetch assigned projects
+        rows = db.execute('SELECT project_id FROM employee_projects WHERE employee_id = ?', (emp_id,)).fetchall()
+        emp_project_ids = [r['project_id'] for r in rows]
+        if not emp_project_ids:
+            emp_project_ids = project_ids
+            
         # Generate a realistic workload per employee (50‑150 completed tasks)
         num_tasks = random.randint(50, 150)
         for _ in range(num_tasks):
-            project_id = random.choice(project_ids)
+            project_id = random.choice(emp_project_ids)
             # Distribute tasks over the last 6‑12 months
             days_ago = random.randint(180, 365)
             created_at = now - timedelta(days=days_ago,
@@ -531,18 +566,52 @@ def hr_tracking():
         conditions.append(f"t.creator_id IN ({placeholders})")
         params.extend(selected_creators)
         
+    # Count total tasks first
+    count_query = '''
+        SELECT COUNT(*)
+        FROM tasks t
+        JOIN users u ON t.employee_id = u.id
+        LEFT JOIN users creator ON t.creator_id = creator.id
+        LEFT JOIN projects p ON t.project_id = p.id
+    '''
     if conditions:
-        query += " WHERE " + " AND ".join(conditions)
-        
-    query += " ORDER BY t.created_at DESC"
+        count_query += " WHERE " + " AND ".join(conditions)
+    total_tasks = db.execute(count_query, params).fetchone()[0]
+
+    # Get page and per_page
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    total_pages = (total_tasks + per_page - 1) // per_page if total_tasks > 0 else 1
+    page = max(1, min(page, total_pages))
+
+    # Paginate query
+    query += " LIMIT ? OFFSET ?"
+    tasks_params = list(params) + [per_page, (page - 1) * per_page]
+    tasks = db.execute(query, tasks_params).fetchall()
     
-    tasks = db.execute(query, params).fetchall()
-    
+    # Helper to construct pagination URLs preserving multi-value filters
+    def get_page_url(page_num):
+        import urllib.parse
+        params_list = []
+        for key, values in request.args.lists():
+            if key == 'page':
+                continue
+            for val in values:
+                params_list.append((key, val))
+        params_list.append(('page', str(page_num)))
+        return url_for('hr_tracking') + '?' + urllib.parse.urlencode(params_list)
+
     # Fetch options for filters
     employees_list = db.execute("SELECT id, full_name, username FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
     projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
     creators_list = db.execute("SELECT DISTINCT u.id, u.full_name, u.username FROM users u JOIN tasks t ON t.creator_id = u.id ORDER BY u.full_name").fetchall()
     
+    showing_from = (page - 1) * per_page + 1 if total_tasks > 0 else 0
+    showing_to = min(page * per_page, total_tasks)
+    start_page = max(1, page - 2)
+    end_page = min(total_pages, page + 2)
+    page_range = list(range(start_page, end_page + 1))
+
     return render_template(
         'hr_tracking.html', 
         tasks=tasks,
@@ -554,7 +623,14 @@ def hr_tracking():
         selected_statuses=selected_statuses,
         created_from=created_from,
         created_to=created_to,
-        selected_creators=selected_creators
+        selected_creators=selected_creators,
+        page=page,
+        total_pages=total_pages,
+        total_tasks=total_tasks,
+        page_url=get_page_url,
+        showing_from=showing_from,
+        showing_to=showing_to,
+        page_range=page_range
     )
 
 @app.route('/hr/employees')
@@ -887,6 +963,7 @@ def hr_seed():
 def delete_project(project_id):
     db = get_db()
     db.execute('UPDATE tasks SET project_id = NULL WHERE project_id = ?', (project_id,))
+    db.execute('DELETE FROM employee_projects WHERE project_id = ?', (project_id,))
     db.execute('DELETE FROM projects WHERE id = ?', (project_id,))
     db.commit()
     flash('Project deleted.', 'info')
@@ -902,6 +979,7 @@ def add_employee():
         password = request.form['password']
         position = request.form.get('position', '')
         manager_usernames = request.form.getlist('managers')
+        project_ids = request.form.getlist('projects')
         role = 'Employee'
         pwd_hash = bcrypt.generate_password_hash(password).decode('utf-8')
         
@@ -920,6 +998,10 @@ def add_employee():
                         manager_ids.append(mgr_row['id'])
                 set_manager_ids(employee_id, manager_ids)
                 
+                for p_id in project_ids:
+                    db.execute('INSERT INTO employee_projects (employee_id, project_id) VALUES (?,?)', (employee_id, int(p_id)))
+                db.commit()
+                
             flash('Employee added.', 'success')
             return redirect(url_for('hr_employees'))
         except sqlite3.IntegrityError:
@@ -927,7 +1009,8 @@ def add_employee():
             
     # List all current employees to be chosen as managers
     employees = db.execute("SELECT * FROM users WHERE role = 'Employee'").fetchall()
-    return render_template('add_employee.html', employees=employees)
+    projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
+    return render_template('add_employee.html', employees=employees, projects=projects)
 
 @app.route('/hr/edit/<int:user_id>', methods=['GET', 'POST'])
 @role_required('HR')
@@ -944,6 +1027,7 @@ def edit_employee(user_id):
         position = request.form.get('position', '')
         password = request.form.get('password', '').strip()
         manager_usernames = request.form.getlist('managers')
+        project_ids = request.form.getlist('projects')
         
         try:
             if password:
@@ -962,6 +1046,11 @@ def edit_employee(user_id):
                     manager_ids.append(mgr_row['id'])
             set_manager_ids(user_id, manager_ids)
             
+            db.execute('DELETE FROM employee_projects WHERE employee_id = ?', (user_id,))
+            for p_id in project_ids:
+                db.execute('INSERT INTO employee_projects (employee_id, project_id) VALUES (?,?)', (user_id, int(p_id)))
+            db.commit()
+            
             flash('Employee updated.', 'success')
             return redirect(url_for('hr_employees'))
         except sqlite3.IntegrityError:
@@ -976,13 +1065,18 @@ def edit_employee(user_id):
         if r:
             current_managers.append(r['username'])
             
-    return render_template('edit_employee.html', user=user, employees=employees, current_managers=current_managers)
+    projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
+    current_proj_rows = db.execute("SELECT project_id FROM employee_projects WHERE employee_id = ?", (user_id,)).fetchall()
+    current_project_ids = [r['project_id'] for r in current_proj_rows]
+            
+    return render_template('edit_employee.html', user=user, employees=employees, current_managers=current_managers, projects=projects, current_project_ids=current_project_ids)
 
 @app.route('/hr/delete/<int:user_id>', methods=['POST'])
 @role_required('HR')
 def delete_employee(user_id):
     db = get_db()
     db.execute('DELETE FROM employee_managers WHERE employee_id = ? OR manager_id = ?', (user_id, user_id))
+    db.execute('DELETE FROM employee_projects WHERE employee_id = ?', (user_id,))
     db.execute('DELETE FROM tasks WHERE employee_id = ?', (user_id,))
     db.execute('DELETE FROM users WHERE id = ?', (user_id,))
     db.commit()
@@ -1088,8 +1182,16 @@ def employee_dashboard():
         LEFT JOIN users creator ON t.creator_id = creator.id
         LEFT JOIN projects p ON t.project_id = p.id
         WHERE em.manager_id = ?
+          AND EXISTS (
+              SELECT 1 FROM employee_projects ep1
+              WHERE ep1.employee_id = t.employee_id AND ep1.project_id = t.project_id
+          )
+          AND EXISTS (
+              SELECT 1 FROM employee_projects ep2
+              WHERE ep2.employee_id = ? AND ep2.project_id = t.project_id
+          )
     '''
-    sub_params = [current_user.id]
+    sub_params = [current_user.id, current_user.id]
     
     if selected_sub_employees:
         placeholders = ','.join('?' for _ in selected_sub_employees)
@@ -1136,8 +1238,15 @@ def employee_dashboard():
     
     subordinate_tasks = db.execute(sub_query, sub_params).fetchall()
     
-    # Fetch options for filters specifically for this employee's tasks
-    projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
+    # Fetch options for filters specifically for this employee's tasks (restricted to assigned projects)
+    projects_list = db.execute('''
+        SELECT p.id, p.name FROM projects p
+        JOIN employee_projects ep ON p.id = ep.project_id
+        WHERE ep.employee_id = ?
+        ORDER BY p.name
+    ''', (current_user.id,)).fetchall()
+    if not projects_list:
+        projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
     creators_list = db.execute('''
         SELECT DISTINCT u.id, u.full_name, u.username 
         FROM users u 
@@ -1192,7 +1301,14 @@ def add_task():
         db.commit()
         flash('Task added.', 'success')
         return redirect(url_for('employee_dashboard'))
-    projects = db.execute('SELECT * FROM projects').fetchall()
+    projects = db.execute('''
+        SELECT p.* FROM projects p
+        JOIN employee_projects ep ON p.id = ep.project_id
+        WHERE ep.employee_id = ?
+        ORDER BY p.name
+    ''', (current_user.id,)).fetchall()
+    if not projects:
+        projects = db.execute('SELECT * FROM projects').fetchall()
     return render_template('add_task.html', projects=projects)
 
 @app.route('/employee/edit/<int:task_id>', methods=['GET', 'POST'])
@@ -1243,7 +1359,14 @@ def edit_task(task_id):
         flash('Task updated.', 'success')
         return redirect(url_for('employee_dashboard'))
         
-    projects = db.execute('SELECT * FROM projects').fetchall()
+    projects = db.execute('''
+        SELECT p.* FROM projects p
+        JOIN employee_projects ep ON p.id = ep.project_id
+        WHERE ep.employee_id = ?
+        ORDER BY p.name
+    ''', (current_user.id,)).fetchall()
+    if not projects:
+        projects = db.execute('SELECT * FROM projects').fetchall()
     return render_template('edit_task.html', task=task, projects=projects)
 
 @app.route('/employee/task/<int:task_id>/update_status', methods=['POST'])
@@ -1334,7 +1457,15 @@ def view_subordinate_tasks(sub_id):
         LEFT JOIN users u ON t.creator_id = u.id
         LEFT JOIN projects p ON t.project_id = p.id
         WHERE t.employee_id = ?
-    ''', (sub_id,)).fetchall()
+          AND EXISTS (
+              SELECT 1 FROM employee_projects ep1
+              WHERE ep1.employee_id = t.employee_id AND ep1.project_id = t.project_id
+          )
+          AND EXISTS (
+              SELECT 1 FROM employee_projects ep2
+              WHERE ep2.employee_id = ? AND ep2.project_id = t.project_id
+          )
+    ''', (sub_id, current_user.id)).fetchall()
     return render_template('subordinate_tasks.html', subordinate=subordinate, tasks=tasks)
 
 @app.route('/employee/subordinate/<int:sub_id>/tasks/add', methods=['GET', 'POST'])
@@ -1356,7 +1487,22 @@ def add_subordinate_task(sub_id):
         db.commit()
         flash('Task assigned to employee.', 'success')
         return redirect(url_for('view_subordinate_tasks', sub_id=sub_id))
-    projects = db.execute('SELECT * FROM projects').fetchall()
+    projects = db.execute('''
+        SELECT p.* FROM projects p
+        JOIN employee_projects ep_sub ON p.id = ep_sub.project_id
+        JOIN employee_projects ep_mgr ON p.id = ep_mgr.project_id
+        WHERE ep_sub.employee_id = ? AND ep_mgr.employee_id = ?
+        ORDER BY p.name
+    ''', (sub_id, current_user.id)).fetchall()
+    if not projects:
+        projects = db.execute('''
+            SELECT p.* FROM projects p
+            JOIN employee_projects ep ON p.id = ep.project_id
+            WHERE ep.employee_id = ?
+            ORDER BY p.name
+        ''', (sub_id,)).fetchall()
+    if not projects:
+        projects = db.execute('SELECT * FROM projects').fetchall()
     return render_template('add_subordinate_task.html', subordinate=subordinate, projects=projects)
 
 # ---------- Init ----------

@@ -27,7 +27,49 @@
       {% endfor %}
     </select>
   </div>
+  <div class='mb-3'>
+    <label class='form-label fw-bold'>Assigned Projects (choose one or more)</label>
+    <div class='border rounded p-3' style='max-height: 200px; overflow-y: auto; background-color: #f8f9fa;'>
+      <div class='form-check mb-2 pb-2 border-bottom'>
+        <input class='form-check-input' type='checkbox' id='selectAllProjects'>
+        <label class='form-check-label fw-bold' for='selectAllProjects'>
+          Select All / Deselect All
+        </label>
+      </div>
+      {% for proj in projects %}
+        <div class='form-check'>
+          <input class='form-check-input project-checkbox' type='checkbox' name='projects' value='{{ proj.id }}' id='proj_{{ proj.id }}'>
+          <label class='form-check-label text-truncate d-block' for='proj_{{ proj.id }}'>
+            {{ proj.name }} <span class='text-muted small'>(Client: {{ proj.client }})</span>
+          </label>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
   <button type='submit' class='btn btn-primary'>Add</button>
   <a href='{{ url_for('hr_employees') }}' class='btn btn-secondary ms-2'>Cancel</a>
 </form>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('selectAllProjects');
+  if (selectAll) {
+    const checkboxes = document.querySelectorAll('.project-checkbox');
+    selectAll.addEventListener('change', function() {
+      checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    });
+    function updateSelectAll() {
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+      selectAll.checked = allChecked;
+      selectAll.indeterminate = someChecked && !allChecked;
+    }
+    checkboxes.forEach(cb => cb.addEventListener('change', updateSelectAll));
+    updateSelectAll();
+  }
+});
+</script>
+{% endblock %}
+
