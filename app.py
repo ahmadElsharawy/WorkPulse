@@ -141,11 +141,17 @@ def init_db():
         CREATE TABLE IF NOT EXISTS employee_projects (
             employee_id INTEGER NOT NULL,
             project_id INTEGER NOT NULL,
+            allocated_hours INTEGER DEFAULT 0,
             FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
             PRIMARY KEY (employee_id, project_id)
         )
     ''')
+    try:
+        db.execute('ALTER TABLE employee_projects ADD COLUMN allocated_hours INTEGER DEFAULT 0')
+        db.commit()
+    except sqlite3.OperationalError:
+        pass
     # Projects table
     db.execute('''
         CREATE TABLE IF NOT EXISTS projects (
@@ -270,39 +276,64 @@ def seed_mock_data():
                        (emp_id, mgr))
     db.commit()
 
-    # Assign projects to employees (1 to 5 random projects)
+    # Assign projects to employees (1 to 5 random projects) and set allocated hours
     for emp_id in employee_ids:
         emp_projects = random.sample(project_ids, k=random.randint(1, 5))
         for p_id in emp_projects:
-            db.execute('INSERT INTO employee_projects (employee_id, project_id) VALUES (?,?)', (emp_id, p_id))
+            allocated = random.choice([0, 10, 20, 45, 75, 120, 160]) # 0 means unlimited
+            db.execute('INSERT INTO employee_projects (employee_id, project_id, allocated_hours) VALUES (?,?,?)', (emp_id, p_id, allocated))
     db.commit()
 
     # Create tasks
     now = datetime.utcnow()
+    total_tasks_created = 0
     for emp_id in employee_ids:
-        # Fetch assigned projects
-        rows = db.execute('SELECT project_id FROM employee_projects WHERE employee_id = ?', (emp_id,)).fetchall()
-        emp_project_ids = [r['project_id'] for r in rows]
-        if not emp_project_ids:
-            emp_project_ids = project_ids
+        # Fetch assigned projects and their allocations
+        rows = db.execute('SELECT project_id, allocated_hours FROM employee_projects WHERE employee_id = ?', (emp_id,)).fetchall()
+        for row in rows:
+            p_id = row['project_id']
+            allocated = row['allocated_hours']
             
-        # Generate a realistic workload per employee (50‑150 completed tasks)
-        num_tasks = random.randint(50, 150)
-        for _ in range(num_tasks):
-            project_id = random.choice(emp_project_ids)
-            # Distribute tasks over the last 6‑12 months
-            days_ago = random.randint(180, 365)
-            created_at = now - timedelta(days=days_ago,
-                                         hours=random.randint(0, 23),
-                                         minutes=random.randint(0, 59))
-            created_str = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            # Random duration between 0.5h and 8h
-            duration = random.randint(1800, 28800)
-            status = 'Completed'
-            db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
-                       (emp_id, project_id, 'Task', 'Generated task', status, created_str, duration, emp_id))
+            # Determine target total seconds worked on this project
+            if allocated > 0:
+                # 30% chance to exceed the allocated hours (generating negative balance)
+                if random.random() < 0.3:
+                    target_hours = allocated * random.uniform(1.05, 1.30)
+                else:
+                    # 70% chance to stay within limit (generating positive balance)
+                    target_hours = allocated * random.uniform(0.15, 0.85)
+                target_seconds = int(target_hours * 3600)
+            else:
+                # Unlimited projects get random hours between 5 and 60
+                target_seconds = random.randint(5 * 3600, 60 * 3600)
+                
+            # Distribute target_seconds among several tasks
+            remaining_seconds = target_seconds
+            while remaining_seconds > 0:
+                # Each task takes between 1 and 8 hours (3600 and 28800 seconds)
+                duration = random.randint(3600, min(28800, remaining_seconds))
+                if remaining_seconds - duration < 3600:
+                    # dump the small tail remainder here
+                    duration = remaining_seconds
+                
+                remaining_seconds -= duration
+                
+                # Distribute tasks over the last 90 days
+                days_ago = random.randint(1, 90)
+                created_at = now - timedelta(days=days_ago,
+                                             hours=random.randint(0, 23),
+                                             minutes=random.randint(0, 59))
+                created_str = created_at.strftime('%Y-%m-%d %H:%M:%S')
+                
+                status = random.choice(['Finish', 'Pause'])
+                title = f"{fake.catch_phrase()} Task"
+                desc = fake.sentence()
+                
+                db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                           (emp_id, p_id, title, desc, status, created_str, duration, emp_id))
+                total_tasks_created += 1
     db.commit()
-    return {'projects': len(project_ids), 'employees': len(employee_ids), 'tasks_generated': 'variable'}
+    return {'projects': len(project_ids), 'employees': len(employee_ids), 'tasks_generated': total_tasks_created}
 
 # ---------- Manager helpers ----------
 
@@ -646,6 +677,77 @@ def hr_projects():
     db = get_db()
     projects = db.execute('SELECT * FROM projects').fetchall()
     return render_template('hr_projects.html', projects=projects)
+
+@app.route('/hr/employees/<int:user_id>')
+@role_required('HR')
+def hr_employee_detail(user_id):
+    db = get_db()
+    employee = db.execute('SELECT * FROM users WHERE id = ? AND role != ?', (user_id, 'HR')).fetchone()
+    if not employee:
+        flash('Employee not found.', 'danger')
+        return redirect(url_for('hr_employees'))
+        
+    projects = db.execute('''
+        SELECT p.id, p.name, ep.allocated_hours,
+               COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+        FROM projects p
+        JOIN employee_projects ep ON p.id = ep.project_id
+        LEFT JOIN tasks t ON p.id = t.project_id AND t.employee_id = ep.employee_id
+        WHERE ep.employee_id = ?
+        GROUP BY p.id
+        ORDER BY p.name
+    ''', (user_id,)).fetchall()
+    
+    project_details = []
+    for p in projects:
+        allocated = p['allocated_hours']
+        worked_hours = p['worked_seconds'] / 3600.0
+        remaining = allocated - worked_hours if allocated > 0 else 0
+        project_details.append({
+            'id': p['id'],
+            'name': p['name'],
+            'allocated_hours': allocated,
+            'worked_hours': worked_hours,
+            'remaining_hours': remaining
+        })
+        
+    return render_template('hr_employee_detail.html', employee=employee, projects=project_details)
+
+@app.route('/hr/projects/<int:project_id>')
+@role_required('HR')
+def hr_project_detail(project_id):
+    db = get_db()
+    project = db.execute('SELECT * FROM projects WHERE id = ?', (project_id,)).fetchone()
+    if not project:
+        flash('Project not found.', 'danger')
+        return redirect(url_for('hr_projects'))
+        
+    employees = db.execute('''
+        SELECT u.id, u.full_name, u.username, ep.allocated_hours,
+               COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+        FROM users u
+        JOIN employee_projects ep ON u.id = ep.employee_id
+        LEFT JOIN tasks t ON ep.project_id = t.project_id AND t.employee_id = u.id
+        WHERE ep.project_id = ?
+        GROUP BY u.id
+        ORDER BY u.full_name
+    ''', (project_id,)).fetchall()
+    
+    employee_details = []
+    for emp in employees:
+        allocated = emp['allocated_hours']
+        worked_hours = emp['worked_seconds'] / 3600.0
+        remaining = allocated - worked_hours if allocated > 0 else 0
+        employee_details.append({
+            'id': emp['id'],
+            'full_name': emp['full_name'],
+            'username': emp['username'],
+            'allocated_hours': allocated,
+            'worked_hours': worked_hours,
+            'remaining_hours': remaining
+        })
+        
+    return render_template('hr_project_detail.html', project=project, employees=employee_details)
 
 @app.route('/hr/projects/add', methods=['POST'])
 @role_required('HR')
@@ -999,7 +1101,9 @@ def add_employee():
                 set_manager_ids(employee_id, manager_ids)
                 
                 for p_id in project_ids:
-                    db.execute('INSERT INTO employee_projects (employee_id, project_id) VALUES (?,?)', (employee_id, int(p_id)))
+                    hours_val = request.form.get(f'allocated_hours_{p_id}', '0').strip()
+                    hours = int(hours_val) if hours_val.isdigit() else 0
+                    db.execute('INSERT INTO employee_projects (employee_id, project_id, allocated_hours) VALUES (?,?,?)', (employee_id, int(p_id), hours))
                 db.commit()
                 
             flash('Employee added.', 'success')
@@ -1048,7 +1152,9 @@ def edit_employee(user_id):
             
             db.execute('DELETE FROM employee_projects WHERE employee_id = ?', (user_id,))
             for p_id in project_ids:
-                db.execute('INSERT INTO employee_projects (employee_id, project_id) VALUES (?,?)', (user_id, int(p_id)))
+                hours_val = request.form.get(f'allocated_hours_{p_id}', '0').strip()
+                hours = int(hours_val) if hours_val.isdigit() else 0
+                db.execute('INSERT INTO employee_projects (employee_id, project_id, allocated_hours) VALUES (?,?,?)', (user_id, int(p_id), hours))
             db.commit()
             
             flash('Employee updated.', 'success')
@@ -1066,10 +1172,11 @@ def edit_employee(user_id):
             current_managers.append(r['username'])
             
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
-    current_proj_rows = db.execute("SELECT project_id FROM employee_projects WHERE employee_id = ?", (user_id,)).fetchall()
+    current_proj_rows = db.execute("SELECT project_id, allocated_hours FROM employee_projects WHERE employee_id = ?", (user_id,)).fetchall()
     current_project_ids = [r['project_id'] for r in current_proj_rows]
+    project_allocations = {r['project_id']: r['allocated_hours'] for r in current_proj_rows}
             
-    return render_template('edit_employee.html', user=user, employees=employees, current_managers=current_managers, projects=projects, current_project_ids=current_project_ids)
+    return render_template('edit_employee.html', user=user, employees=employees, current_managers=current_managers, projects=projects, current_project_ids=current_project_ids, project_allocations=project_allocations)
 
 @app.route('/hr/delete/<int:user_id>', methods=['POST'])
 @role_required('HR')
@@ -1265,6 +1372,30 @@ def employee_dashboard():
         ORDER BY creator.full_name
     ''', (current_user.id,)).fetchall()
     
+    # Fetch assigned projects and remaining hour balances
+    balance_rows = db.execute('''
+        SELECT p.id, p.name, ep.allocated_hours,
+               COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+        FROM projects p
+        JOIN employee_projects ep ON p.id = ep.project_id
+        LEFT JOIN tasks t ON p.id = t.project_id AND t.employee_id = ep.employee_id
+        WHERE ep.employee_id = ?
+        GROUP BY p.id
+        ORDER BY p.name
+    ''', (current_user.id,)).fetchall()
+    
+    assigned_project_balances = []
+    for r in balance_rows:
+        allocated = r['allocated_hours']
+        worked_hours = r['worked_seconds'] / 3600.0
+        remaining_hours = allocated - worked_hours if allocated > 0 else 0
+        assigned_project_balances.append({
+            'id': r['id'],
+            'name': r['name'],
+            'allocated_hours': allocated,
+            'remaining_hours': remaining_hours
+        })
+
     return render_template(
         'employee.html', 
         tasks=tasks, 
@@ -1284,7 +1415,8 @@ def employee_dashboard():
         selected_sub_statuses=selected_sub_statuses,
         sub_created_from=sub_created_from,
         sub_created_to=sub_created_to,
-        selected_sub_creators=selected_sub_creators
+        selected_sub_creators=selected_sub_creators,
+        assigned_project_balances=assigned_project_balances
     )
 
 @app.route('/employee/add', methods=['GET', 'POST'])
@@ -1301,14 +1433,32 @@ def add_task():
         db.commit()
         flash('Task added.', 'success')
         return redirect(url_for('employee_dashboard'))
-    projects = db.execute('''
-        SELECT p.* FROM projects p
+    projects_raw = db.execute('''
+        SELECT p.id, p.name, ep.allocated_hours,
+               COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+        FROM projects p
         JOIN employee_projects ep ON p.id = ep.project_id
+        LEFT JOIN tasks t ON p.id = t.project_id AND t.employee_id = ep.employee_id
         WHERE ep.employee_id = ?
+        GROUP BY p.id
         ORDER BY p.name
     ''', (current_user.id,)).fetchall()
+    
+    projects = []
+    for p in projects_raw:
+        allocated = p['allocated_hours']
+        if allocated == 0:
+            name_with_balance = f"{p['name']} (Unlimited hours)"
+        else:
+            worked_hours = p['worked_seconds'] / 3600.0
+            remaining = allocated - worked_hours
+            name_with_balance = f"{p['name']} ({remaining:.2f} hrs remaining of {allocated} hrs)"
+        projects.append({'id': p['id'], 'name': name_with_balance})
+        
     if not projects:
-        projects = db.execute('SELECT * FROM projects').fetchall()
+        raw_fallback = db.execute('SELECT * FROM projects ORDER BY name').fetchall()
+        projects = [{'id': p['id'], 'name': f"{p['name']} (Unlimited hours)"} for p in raw_fallback]
+        
     return render_template('add_task.html', projects=projects)
 
 @app.route('/employee/edit/<int:task_id>', methods=['GET', 'POST'])
@@ -1359,14 +1509,32 @@ def edit_task(task_id):
         flash('Task updated.', 'success')
         return redirect(url_for('employee_dashboard'))
         
-    projects = db.execute('''
-        SELECT p.* FROM projects p
+    projects_raw = db.execute('''
+        SELECT p.id, p.name, ep.allocated_hours,
+               COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+        FROM projects p
         JOIN employee_projects ep ON p.id = ep.project_id
+        LEFT JOIN tasks t ON p.id = t.project_id AND t.employee_id = ep.employee_id
         WHERE ep.employee_id = ?
+        GROUP BY p.id
         ORDER BY p.name
     ''', (current_user.id,)).fetchall()
+    
+    projects = []
+    for p in projects_raw:
+        allocated = p['allocated_hours']
+        if allocated == 0:
+            name_with_balance = f"{p['name']} (Unlimited hours)"
+        else:
+            worked_hours = p['worked_seconds'] / 3600.0
+            remaining = allocated - worked_hours
+            name_with_balance = f"{p['name']} ({remaining:.2f} hrs remaining of {allocated} hrs)"
+        projects.append({'id': p['id'], 'name': name_with_balance})
+        
     if not projects:
-        projects = db.execute('SELECT * FROM projects').fetchall()
+        raw_fallback = db.execute('SELECT * FROM projects ORDER BY name').fetchall()
+        projects = [{'id': p['id'], 'name': f"{p['name']} (Unlimited hours)"} for p in raw_fallback]
+        
     return render_template('edit_task.html', task=task, projects=projects)
 
 @app.route('/employee/task/<int:task_id>/update_status', methods=['POST'])
@@ -1487,22 +1655,45 @@ def add_subordinate_task(sub_id):
         db.commit()
         flash('Task assigned to employee.', 'success')
         return redirect(url_for('view_subordinate_tasks', sub_id=sub_id))
-    projects = db.execute('''
-        SELECT p.* FROM projects p
+    projects_raw = db.execute('''
+        SELECT p.id, p.name, ep_sub.allocated_hours,
+               COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+        FROM projects p
         JOIN employee_projects ep_sub ON p.id = ep_sub.project_id
         JOIN employee_projects ep_mgr ON p.id = ep_mgr.project_id
+        LEFT JOIN tasks t ON p.id = t.project_id AND t.employee_id = ep_sub.employee_id
         WHERE ep_sub.employee_id = ? AND ep_mgr.employee_id = ?
+        GROUP BY p.id
         ORDER BY p.name
     ''', (sub_id, current_user.id)).fetchall()
-    if not projects:
-        projects = db.execute('''
-            SELECT p.* FROM projects p
+    
+    if not projects_raw:
+        projects_raw = db.execute('''
+            SELECT p.id, p.name, ep.allocated_hours,
+                   COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+            FROM projects p
             JOIN employee_projects ep ON p.id = ep.project_id
+            LEFT JOIN tasks t ON p.id = t.project_id AND t.employee_id = ep.employee_id
             WHERE ep.employee_id = ?
+            GROUP BY p.id
             ORDER BY p.name
         ''', (sub_id,)).fetchall()
+        
+    projects = []
+    for p in projects_raw:
+        allocated = p['allocated_hours']
+        if allocated == 0:
+            name_with_balance = f"{p['name']} (Unlimited hours)"
+        else:
+            worked_hours = p['worked_seconds'] / 3600.0
+            remaining = allocated - worked_hours
+            name_with_balance = f"{p['name']} ({remaining:.2f} hrs remaining of {allocated} hrs)"
+        projects.append({'id': p['id'], 'name': name_with_balance})
+        
     if not projects:
-        projects = db.execute('SELECT * FROM projects').fetchall()
+        raw_fallback = db.execute('SELECT * FROM projects ORDER BY name').fetchall()
+        projects = [{'id': p['id'], 'name': f"{p['name']} (Unlimited hours)"} for p in raw_fallback]
+        
     return render_template('add_subordinate_task.html', subordinate=subordinate, projects=projects)
 
 # ---------- Init ----------

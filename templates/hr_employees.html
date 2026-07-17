@@ -24,7 +24,13 @@
     {% for user in users %}
     <tr>
       <td>{{ user.id }}</td>
-      <td>{{ user.full_name }}</td>
+      <td>
+        {% if user.role == 'Employee' %}
+          <a href="{{ url_for('hr_employee_detail', user_id=user.id) }}" class="fw-bold text-decoration-none">{{ user.full_name }}</a>
+        {% else %}
+          {{ user.full_name }}
+        {% endif %}
+      </td>
       <td>{{ user.username }}</td>
       <td>{{ user.position or '-' }}</td>
       <td>{{ user.role }}</td>

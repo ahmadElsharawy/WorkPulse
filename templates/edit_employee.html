@@ -38,12 +38,25 @@
         </label>
       </div>
       {% for proj in projects %}
-        <div class='form-check'>
-          <input class='form-check-input project-checkbox' type='checkbox' name='projects' value='{{ proj.id }}' id='proj_{{ proj.id }}'
-                 {% if proj.id in current_project_ids %}checked{% endif %}>
-          <label class='form-check-label text-truncate d-block' for='proj_{{ proj.id }}'>
-            {{ proj.name }} <span class='text-muted small'>(Client: {{ proj.client }})</span>
-          </label>
+        <div class='row mb-2 align-items-center'>
+          <div class='col-auto'>
+            <input class='form-check-input project-checkbox' type='checkbox' name='projects' value='{{ proj.id }}' id='proj_{{ proj.id }}'
+                   {% if proj.id in current_project_ids %}checked{% endif %}>
+          </div>
+          <div class='col'>
+            <label class='form-check-label text-truncate d-block mb-0' for='proj_{{ proj.id }}'>
+              {{ proj.name }} <span class='text-muted small'>(Client: {{ proj.client }})</span>
+            </label>
+          </div>
+          <div class='col-md-4 col-sm-6'>
+            <div class='input-group input-group-sm'>
+              <span class='input-group-text'>Limit:</span>
+              <input type='number' name='allocated_hours_{{ proj.id }}' class='form-control project-hours-input' 
+                     placeholder='Unlimited (0)' min='0' step='1'
+                     value='{% if proj.id in current_project_ids %}{{ project_allocations[proj.id] or "" }}{% endif %}' disabled>
+              <span class='input-group-text'>hrs</span>
+            </div>
+          </div>
         </div>
       {% endfor %}
     </div>
@@ -57,20 +70,50 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const selectAll = document.getElementById('selectAllProjects');
+  const checkboxes = document.querySelectorAll('.project-checkbox');
+  
   if (selectAll) {
-    const checkboxes = document.querySelectorAll('.project-checkbox');
     selectAll.addEventListener('change', function() {
-      checkboxes.forEach(cb => cb.checked = selectAll.checked);
+      checkboxes.forEach(cb => {
+        cb.checked = selectAll.checked;
+        toggleHoursInput(cb);
+      });
     });
-    function updateSelectAll() {
-      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-      const someChecked = Array.from(checkboxes).some(cb => cb.checked);
-      selectAll.checked = allChecked;
-      selectAll.indeterminate = someChecked && !allChecked;
-    }
-    checkboxes.forEach(cb => cb.addEventListener('change', updateSelectAll));
-    updateSelectAll();
   }
+  
+  function toggleHoursInput(cb) {
+    const hoursInput = document.querySelector(`input[name="allocated_hours_${cb.value}"]`);
+    if (hoursInput) {
+      hoursInput.disabled = !cb.checked;
+      if (!cb.checked) {
+        hoursInput.value = '';
+      }
+    }
+  }
+  
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      toggleHoursInput(cb);
+      updateSelectAll();
+    });
+  });
+  
+  function updateSelectAll() {
+    if (!selectAll) return;
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+    selectAll.checked = allChecked;
+    selectAll.indeterminate = someChecked && !allChecked;
+  }
+  
+  // Apply initial disabled/enabled state based on DB checked status
+  checkboxes.forEach(cb => {
+    const hoursInput = document.querySelector(`input[name="allocated_hours_${cb.value}"]`);
+    if (hoursInput && cb.checked) {
+      hoursInput.disabled = false;
+    }
+  });
+  updateSelectAll();
 });
 </script>
 {% endblock %}

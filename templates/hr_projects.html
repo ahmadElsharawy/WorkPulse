@@ -60,10 +60,12 @@
             </tr>
           </thead>
           <tbody>
-            {% for proj in projects %}
-            <tr>
-              <td><strong>{{ proj.name }}</strong></td>
-              <td class='text-muted'>{{ proj.client }}</td>
+             {% for proj in projects %}
+             <tr>
+               <td>
+                 <a href="{{ url_for('hr_project_detail', project_id=proj.id) }}" class="fw-bold text-decoration-none">{{ proj.name }}</a>
+               </td>
+               <td class='text-muted'>{{ proj.client }}</td>
               <td class='text-muted'>{{ proj.start_date or '–' }}</td>
               <td class='text-muted'>{{ proj.end_date or '–' }}</td>
               <td class='text-center'>

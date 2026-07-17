@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}{{ employee.full_name }} Detail – WorkPulse{% endblock %}
+{% block content %}
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>Employee Detail</h1>
+    <p class='page-subtitle'>Profile and project allocations for {{ employee.full_name }}</p>
+  </div>
+  <div>
+    <a href='{{ url_for("edit_employee", user_id=employee.id) }}' class='btn btn-primary me-2'>Edit Employee</a>
+    <a href='{{ url_for("hr_employees") }}' class='btn btn-secondary'>← Back to Employees</a>
+  </div>
+</div>
+
+<div class='row g-4'>
+  <!-- Profile Info Card -->
+  <div class='col-md-4'>
+    <div class='card h-100'>
+      <div class='card-header bg-dark text-white fw-bold'>
+        Profile Info
+      </div>
+      <div class='card-body p-4'>
+        <div class='text-center mb-4'>
+          <div class='bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2' style='width: 70px; height: 70px; font-size: 2rem;'>
+            {{ employee.full_name[0]|upper }}
+          </div>
+          <h4 class='mb-1'>{{ employee.full_name }}</h4>
+          <span class='badge bg-light text-dark border'>{{ employee.position or 'No Position' }}</span>
+        </div>
+        <hr>
+        <div class='mb-3'>
+          <label class='text-muted small d-block mb-1'>Username</label>
+          <strong>{{ employee.username }}</strong>
+        </div>
+        <div class='mb-3'>
+          <label class='text-muted small d-block mb-1'>System Role</label>
+          <strong>{{ employee.role }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assigned Projects & Hour Balances -->
+  <div class='col-md-8'>
+    <div class='section-title'>Assigned Projects & Hours Balance</div>
+    <div class='card'>
+      <div class='table-responsive'>
+        <table class='table mb-0 align-middle'>
+          <thead>
+            <tr>
+              <th class='ps-3'>Project Name</th>
+              <th class='text-center'>Allocated Limit</th>
+              <th class='text-center'>Actual Worked</th>
+              <th class='text-end pe-3'>Remaining Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for proj in projects %}
+            <tr>
+              <td class='ps-3'>
+                <a href="{{ url_for('hr_project_detail', project_id=proj.id) }}" class='fw-bold text-decoration-none'>{{ proj.name }}</a>
+              </td>
+              <td class='text-center'>
+                {% if proj.allocated_hours == 0 %}
+                  <span class='text-muted'>Unlimited</span>
+                {% else %}
+                  <strong>{{ "%.2f"|format(proj.allocated_hours) }} hrs</strong>
+                {% endif %}
+              </td>
+              <td class='text-center'>
+                {{ "%.2f"|format(proj.worked_hours) }} hrs
+              </td>
+              <td class='text-end pe-3'>
+                {% if proj.allocated_hours == 0 %}
+                  <span class='badge bg-secondary px-2 py-1'>Unlimited</span>
+                {% else %}
+                  {% if proj.remaining_hours < 0 %}
+                    <span class='badge bg-danger px-2 py-1'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                  {% elif proj.remaining_hours < 5 %}
+                    <span class='badge bg-warning text-dark px-2 py-1'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                  {% else %}
+                    <span class='badge bg-success px-2 py-1'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan='4' class='text-center text-muted py-4'>No projects assigned to this employee.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

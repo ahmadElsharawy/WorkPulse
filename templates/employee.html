@@ -110,83 +110,122 @@
   </div>
 </div>
 
-<!-- ── My Tasks Table ── -->
-<div class='card mb-5'>
-  <div class='table-responsive'>
-    <table class='table mb-0 table-sortable' data-sortable>
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Project</th>
-          <th>Description</th>
-          <th>Status</th>
-          <th>Created At</th>
-          <th>Duration</th>
-          <th>Assigned By</th>
-          <th class='text-center'>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for task in tasks %}
-        <tr>
-          <td><strong>{{ task.title }}</strong></td>
-          <td>
-            {% if task.project_name %}
-              <span class='badge' style='background:#e0f2fe;color:#075985;font-weight:600;'>{{ task.project_name }}</span>
-            {% else %}
-              <span class='text-muted'>–</span>
-            {% endif %}
-          </td>
-          <td class='task-desc-cell'>{{ task.description }}</td>
-          <td>
-            <form action='{{ url_for("update_task_status", task_id=task.id) }}' method='post'>
-              <select name='status' class='form-select form-select-sm' style='min-width:100px;' onchange='this.form.submit()'>
-                <option value='Pause'   {% if task.status == 'Pause'   %}selected{% endif %}>Pause</option>
-                <option value='Running' {% if task.status == 'Running' %}selected{% endif %}>Running</option>
-                <option value='Finish'  {% if task.status == 'Finish'  %}selected{% endif %}>Finish</option>
-              </select>
-            </form>
-          </td>
-          <td class='text-muted' style='white-space:nowrap;font-size:.82rem;'>{{ task.created_at|datetimeformat }}</td>
-          <td>
-            {% if task.status == 'Running' %}
-              <span class='badge badge-running'>
-                <span class='spinner-grow spinner-grow-sm me-1' style='width:.45rem;height:.45rem;'></span>
-                <span class='duration-display' data-task-id='{{ task.id }}' data-status='{{ task.status }}'
-                      data-last-started='{{ task.last_started_at or "" }}' data-accumulated='{{ task|total_seconds }}'>{{ task|format_duration }}</span>
-              </span>
-            {% else %}
-              <span class='duration-display' data-task-id='{{ task.id }}' data-status='{{ task.status }}'
-                    data-last-started='{{ task.last_started_at or "" }}' data-accumulated='{{ task|total_seconds }}'>{{ task|format_duration }}</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if task.creator_id == current_user.id %}
-              <span class='badge' style='background:#f1f5f9;color:#64748b;'>Self</span>
-            {% else %}
-              <strong>{{ task.creator_name }}</strong>
-            {% endif %}
-          </td>
-          <td class='text-center'>
-            {% if task.creator_id == current_user.id %}
-              <div class='d-flex gap-2 justify-content-center'>
-                <a href='{{ url_for("edit_task", task_id=task.id) }}' class='btn btn-primary btn-sm'>Edit</a>
-                <form action='{{ url_for("delete_task", task_id=task.id) }}' method='post' style='display:inline;'>
-                  <button type='submit' class='btn btn-danger btn-sm' onclick="return confirm('Delete this task?')">Delete</button>
+<div class='row'>
+  <div class='col-lg-9 col-md-8'>
+    <!-- ── My Tasks Table ── -->
+    <div class='card mb-5'>
+      <div class='table-responsive'>
+        <table class='table mb-0 table-sortable' data-sortable>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Project</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Created At</th>
+              <th>Duration</th>
+              <th>Assigned By</th>
+              <th class='text-center'>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in tasks %}
+            <tr>
+              <td><strong>{{ task.title }}</strong></td>
+              <td>
+                {% if task.project_name %}
+                  <span class='badge' style='background:#e0f2fe;color:#075985;font-weight:600;'>{{ task.project_name }}</span>
+                {% else %}
+                  <span class='text-muted'>–</span>
+                {% endif %}
+              </td>
+              <td class='task-desc-cell'>{{ task.description }}</td>
+              <td>
+                <form action='{{ url_for("update_task_status", task_id=task.id) }}' method='post'>
+                  <select name='status' class='form-select form-select-sm' style='min-width:100px;' onchange='this.form.submit()'>
+                    <option value='Pause'   {% if task.status == 'Pause'   %}selected{% endif %}>Pause</option>
+                    <option value='Running' {% if task.status == 'Running' %}selected{% endif %}>Running</option>
+                    <option value='Finish'  {% if task.status == 'Finish'  %}selected{% endif %}>Finish</option>
+                  </select>
                 </form>
-              </div>
+              </td>
+              <td class='text-muted' style='white-space:nowrap;font-size:.82rem;'>{{ task.created_at|datetimeformat }}</td>
+              <td style='white-space:nowrap;font-family:monospace;'>
+                <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
+              </td>
+              <td>
+                {% if task.creator_id == current_user.id %}
+                  <span class='text-muted'>Self</span>
+                {% else %}
+                  <strong>{{ task.creator_name }}</strong>
+                {% endif %}
+              </td>
+              <td class='text-center'>
+                <div class='d-flex justify-content-center gap-1'>
+                  <a href='{{ url_for("edit_task", task_id=task.id) }}' class='btn btn-sm btn-outline-primary py-0 px-2' style='font-size:.78rem;'>Edit</a>
+                  <form action='{{ url_for("delete_task", task_id=task.id) }}' method='post' onsubmit="return confirm('Delete this task?');">
+                    <button type='submit' class='btn btn-sm btn-outline-danger py-0 px-2' style='font-size:.78rem;'>Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
             {% else %}
-              <span class='badge' style='background:#fef3c7;color:#92400e;'>Assigned</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan='8' class='text-center text-muted py-4'>No tasks found. <a href='{{ url_for("add_task") }}'>Add your first task →</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+            <tr>
+              <td colspan='8' class='text-center text-muted py-4'>No tasks found. <a href='{{ url_for("add_task") }}'>Add your first task →</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class='col-lg-3 col-md-4'>
+    <!-- ── My Project Hour Balances ── -->
+    <div class='card mb-5'>
+      <div class='card-header bg-dark text-white fw-bold'>
+        My Project Hour Balances
+      </div>
+      <div class='card-body p-0'>
+        <div class='table-responsive'>
+          <table class='table table-sm align-middle mb-0' style='font-size:0.9rem;'>
+            <thead>
+              <tr class='table-light'>
+                <th class='ps-3'>Project</th>
+                <th class='text-end pe-3'>Remaining</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for proj in assigned_project_balances %}
+              <tr>
+                <td class='ps-3 text-truncate' style='max-width: 150px;' title='{{ proj.name }}'>
+                  <strong>{{ proj.name }}</strong>
+                </td>
+                <td class='text-end pe-3'>
+                  {% if proj.allocated_hours == 0 %}
+                    <span class='badge bg-secondary px-2 py-1'>Unlimited</span>
+                  {% else %}
+                    {% if proj.remaining_hours < 0 %}
+                      <span class='badge bg-danger px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                    {% elif proj.remaining_hours < 5 %}
+                      <span class='badge bg-warning text-dark px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                    {% else %}
+                      <span class='badge bg-success px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                    {% endif %}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+              {% if not assigned_project_balances %}
+              <tr>
+                <td colspan='2' class='text-muted text-center py-3'>No projects assigned.</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
