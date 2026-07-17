@@ -1,20 +1,36 @@
-﻿{% extends 'base.html' %}
-{% block title %}Login{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Login – WorkPulse{% endblock %}
 {% block content %}
-<div class='row justify-content-center'>
-  <div class='col-md-4'>
-    <h2 class='mb-4'>Login</h2>
+<!-- Override container padding for login -->
+<style>
+  .container.mt-4 { max-width: 100%; padding: 0; margin: 0 !important; }
+</style>
+<div class='login-wrapper'>
+  <div class='login-card card p-4 p-md-5'>
+    <!-- Logo -->
+    <div class='login-logo'>WorkPulse</div>
+    <p class='login-tagline'>Employee Task Management &amp; HR Reporting</p>
+
     <form method='post'>
-      <div class='mb-3'>
-        <label class='form-label'>Username</label>
-        <input type='text' name='username' class='form-control' required>
+      <div class='mb-4'>
+        <label class='form-label' for='login-username'>Username</label>
+        <input type='text' id='login-username' name='username' class='form-control form-control-lg' placeholder='Enter your username' required autocomplete='username'>
       </div>
-      <div class='mb-3'>
-        <label class='form-label'>Password</label>
-        <input type='password' name='password' class='form-control' required>
+      <div class='mb-4'>
+        <label class='form-label' for='login-password'>Password</label>
+        <input type='password' id='login-password' name='password' class='form-control form-control-lg' placeholder='••••••••' required autocomplete='current-password'>
       </div>
-      <button type='submit' class='btn btn-primary'>Login</button>
+      <button type='submit' class='btn btn-primary w-100 py-2' style='font-size:1rem;'>
+        Sign In
+        <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='ms-2' viewBox='0 0 16 16'>
+          <path fill-rule='evenodd' d='M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8'/>
+        </svg>
+      </button>
     </form>
+
+    <p class='text-center text-muted mt-4 mb-0' style='font-size:.78rem;'>
+      WorkPulse &copy; {{ 2026 }}
+    </p>
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,25 @@
+/* HR Reports specific styles */
+
+/* Ensure the tabs have some spacing */
+#reportTabs .nav-link {
+    font-weight: 600;
+    color: #0d6efd;
+}
+#reportTabs .nav-link.active {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+/* Adjust form spacing */
+#employeeReportForm .form-select,
+#projectReportForm .form-select {
+    max-height: 250px;
+}
+
+/* Button hover effects */
+#exportEmployeeBtn:hover,
+#exportProjectBtn:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+    transition: all 0.2s ease-in-out;
+}

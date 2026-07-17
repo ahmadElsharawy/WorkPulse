@@ -1,8 +1,8 @@
 # app.py
 import os, json
 import sqlite3
-from datetime import datetime
-from flask import Flask, g, render_template, request, redirect, url_for, flash, jsonify
+from datetime import datetime, timedelta
+from flask import Flask, g, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 
@@ -17,7 +17,8 @@ login_manager.login_view = 'login'
 login_manager.init_app(app)
 
 bcrypt = Bcrypt(app)
-
+import random, re
+from faker import Faker
 @app.template_filter('datetimeformat')
 def datetimeformat(value):
     if not value:
@@ -202,6 +203,71 @@ def seed_data():
                    (ahmed['id'], proj_a['id'] if proj_a else None, 'Task Two', 'Second sample task', 'Finish', now, 7200, badr['id']))
         
     db.commit()
+
+def seed_mock_data():
+    """Populate the SQLite database with mock projects, employees, and tasks."""
+    db = get_db()
+    # Clear existing data
+    db.execute('DELETE FROM tasks')
+    db.execute('DELETE FROM employee_managers')
+    db.execute('DELETE FROM users WHERE role = "Employee"')
+    db.execute('DELETE FROM projects')
+    db.commit()
+
+    fake = Faker()
+    # Create projects
+    project_ids = []
+    for _ in range(30):
+        name = fake.company() + " Project"
+        client = fake.company()
+        start_date = fake.date_between(start_date='-180d')
+        end_date = fake.date_between(start_date=start_date, end_date='+180d')
+        cursor = db.execute('INSERT INTO projects (name, client, start_date, end_date) VALUES (?,?,?,?)',
+                       (name, client, start_date.isoformat(), end_date.isoformat()))
+        project_ids.append(cursor.lastrowid)
+    db.commit()
+
+    # Create employees
+    employee_ids = []
+    default_pwd = bcrypt.generate_password_hash('password123').decode('utf-8')
+    for _ in range(50):
+        full_name = fake.name()
+        username = fake.user_name()
+        position = fake.job()
+        cursor = db.execute('INSERT INTO users (full_name, username, password_hash, role, position) VALUES (?,?,?,?,?)',
+                    (full_name, username, default_pwd, 'Employee', position))
+        employee_ids.append(cursor.lastrowid)
+    db.commit()
+
+    # Assign managers (up to 2 per employee)
+    for emp_id in employee_ids:
+        possible_mgrs = [mid for mid in employee_ids if mid != emp_id]
+        mgrs = random.sample(possible_mgrs, k=random.randint(0, 2))
+        for mgr in mgrs:
+            db.execute('INSERT INTO employee_managers (employee_id, manager_id) VALUES (?,?)',
+                       (emp_id, mgr))
+    db.commit()
+
+    # Create tasks
+    now = datetime.utcnow()
+    for emp_id in employee_ids:
+        # Generate a realistic workload per employee (50‑150 completed tasks)
+        num_tasks = random.randint(50, 150)
+        for _ in range(num_tasks):
+            project_id = random.choice(project_ids)
+            # Distribute tasks over the last 6‑12 months
+            days_ago = random.randint(180, 365)
+            created_at = now - timedelta(days=days_ago,
+                                         hours=random.randint(0, 23),
+                                         minutes=random.randint(0, 59))
+            created_str = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            # Random duration between 0.5h and 8h
+            duration = random.randint(1800, 28800)
+            status = 'Completed'
+            db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                       (emp_id, project_id, 'Task', 'Generated task', status, created_str, duration, emp_id))
+    db.commit()
+    return {'projects': len(project_ids), 'employees': len(employee_ids), 'tasks_generated': 'variable'}
 
 # ---------- Manager helpers ----------
 
@@ -552,6 +618,269 @@ def edit_project(project_id):
             flash('Project name and Client are required.', 'danger')
             
     return render_template('edit_project.html', project=project)
+# ----- HR Reporting -----
+
+from io import BytesIO
+import pandas as pd
+from flask import send_file, jsonify
+
+def _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids=None):
+    """Return list of dicts with task data for employee report.
+    Excludes running tasks and filters by creation date.
+    """
+    db = get_db()
+    params = [employee_id, f"{date_from} 00:00", f"{date_to} 23:59"]
+    query = '''
+        SELECT t.id, t.created_at, t.running_duration, p.id as project_id, p.name as project_name
+        FROM tasks t
+        JOIN projects p ON t.project_id = p.id
+        WHERE t.employee_id = ?
+          AND t.status != 'Running'
+          AND datetime(t.created_at) BETWEEN ? AND ?
+    '''
+    if project_ids:
+        placeholders = ','.join('?' for _ in project_ids)
+        query += f" AND p.id IN ({placeholders})"
+        params.extend(project_ids)
+    rows = db.execute(query, params).fetchall()
+    return [dict(row) for row in rows]
+
+def _fetch_tasks_for_project_report(project_id, date_from, date_to, employee_ids=None):
+    """Return list of dicts with task data for project report.
+    If project_id is None, include all projects.
+    """
+    db = get_db()
+    params = [f"{date_from} 00:00", f"{date_to} 23:59"]
+    query = '''
+        SELECT t.id, t.created_at, t.running_duration, u.id as employee_id, u.full_name as employee_name, p.id as project_id, p.name as project_name
+        FROM tasks t
+        JOIN users u ON t.employee_id = u.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        WHERE t.status != 'Running'
+          AND datetime(t.created_at) BETWEEN ? AND ?
+    '''
+    if project_id is not None:
+        query += " AND p.id = ?"
+        params.append(project_id)
+    if employee_ids:
+        placeholders = ','.join('?' for _ in employee_ids)
+        query += f" AND u.id IN ({placeholders})"
+        params.extend(employee_ids)
+    rows = db.execute(query, params).fetchall()
+    return [dict(row) for row in rows]
+
+def _apply_excel_formatting(workbook):
+    """Apply required formatting to both worksheets using openpyxl.
+    """
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side, numbers
+    from openpyxl.utils import get_column_letter
+    header_fill = PatternFill(start_color='FFC000', end_color='FFC000', fill_type='solid')
+    bold_font = Font(bold=True)
+    thin = Side(style='thin')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    for ws in workbook.worksheets:
+        ws.freeze_panes = ws['A2']
+        ws.auto_filter.ref = ws.dimensions
+        for cell in ws[1]:
+            cell.font = bold_font
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = Alignment(horizontal='center')
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+            for cell in row:
+                cell.border = border
+                if isinstance(cell.value, (int, float)):
+                    cell.number_format = numbers.FORMAT_NUMBER_00
+        for col in ws.columns:
+            max_len = max((len(str(cell.value)) for cell in col if cell.value), default=0)
+            ws.column_dimensions[col[0].column_letter].width = max_len + 2
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=1):
+            if str(row[0].value).lower() == 'total':
+                for c in ws[row[0].row]:
+                    c.font = bold_font
+        last_col = ws.max_column
+        for r in range(2, ws.max_row + 1):
+            ws.cell(row=r, column=last_col).font = bold_font
+        ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+
+def _generate_employee_excel(rows, employee_name, date_from, date_to, generated_by):
+    """Create Excel workbook for employee report.
+    Returns a BytesIO object.
+    """
+    if not rows:
+        out = BytesIO()
+        with pd.ExcelWriter(out, engine='openpyxl') as writer:
+            pd.DataFrame([{'Message': 'No data found for selected filters.'}]).to_excel(writer, index=False, sheet_name='Details')
+            pd.DataFrame([{'Message': 'No data found for selected filters.'}]).to_excel(writer, index=False, sheet_name='Summary')
+        out.seek(0)
+        return out
+    df = pd.DataFrame(rows)
+    df['date'] = pd.to_datetime(df['created_at']).dt.date
+    df['hours'] = df['running_duration'] / 3600.0
+    pivot = pd.pivot_table(df, index='date', columns='project_name', values='hours', aggfunc='sum', fill_value=0)
+    pivot = pivot.sort_index()
+    pivot['Total'] = pivot.sum(axis=1)
+    total_row = pivot.sum(axis=0)
+    total_row.name = 'Total'
+    details_df = pd.concat([pivot, pd.DataFrame([total_row])])
+    # Compute per‑project totals (exclude the 'Total' column and the total row)
+    per_project = pivot.iloc[:-1][pivot.columns.drop('Total')].sum()
+    # Round to two decimals for display consistency
+    per_project = per_project.round(2)
+    summary_df = pd.DataFrame({
+        'Project': per_project.index,
+        'Total Hours': per_project.values
+    })
+    # Grand total should be the sum of the displayed project totals
+    grand_total = per_project.sum().round(2)
+    summary_df = pd.concat([summary_df, pd.DataFrame({'Project': ['Grand Total'], 'Total Hours': [grand_total]})], ignore_index=True)
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as writer:
+        details_df.to_excel(writer, sheet_name='Details')
+        ws = writer.book.create_sheet('Summary')
+        info = {
+            'Report Type': 'Employee Report',
+            'Employee': employee_name,
+            'Date From': date_from,
+            'Date To': date_to,
+            'Generated By': generated_by,
+            'Generated On': pd.Timestamp.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        r = 1
+        for k, v in info.items():
+            ws.cell(row=r, column=1, value=k)
+            ws.cell(row=r, column=2, value=v)
+            r += 1
+        table_start = r + 1
+        ws.cell(row=table_start, column=1, value='Project')
+        ws.cell(row=table_start, column=2, value='Total Hours')
+        for i, rec in enumerate(summary_df.itertuples(index=False), start=1):
+            ws.cell(row=table_start + i, column=1, value=rec.Project)
+            ws.cell(row=table_start + i, column=2, value=rec[1])
+        _apply_excel_formatting(writer.book)
+    out.seek(0)
+    return out
+
+def _generate_project_excel(rows, project_name, date_from, date_to, generated_by):
+    """Create Excel workbook for project report.
+    Mirrors employee version but pivots on employee.
+    """
+    if not rows:
+        out = BytesIO()
+        with pd.ExcelWriter(out, engine='openpyxl') as writer:
+            pd.DataFrame([{'Message': 'No data found for selected filters.'}]).to_excel(writer, index=False, sheet_name='Details')
+            pd.DataFrame([{'Message': 'No data found for selected filters.'}]).to_excel(writer, index=False, sheet_name='Summary')
+        out.seek(0)
+        return out
+    df = pd.DataFrame(rows)
+    df['date'] = pd.to_datetime(df['created_at']).dt.date
+    df['hours'] = df['running_duration'] / 3600.0
+    pivot = pd.pivot_table(df, index='date', columns='employee_name', values='hours', aggfunc='sum', fill_value=0)
+    pivot = pivot.sort_index()
+    pivot['Total'] = pivot.sum(axis=1)
+    total_row = pivot.sum(axis=0)
+    total_row.name = 'Total'
+    details_df = pd.concat([pivot, pd.DataFrame([total_row])])
+    # Compute per‑employee totals (exclude the 'Total' column and the total row)
+    per_employee = pivot.iloc[:-1][pivot.columns.drop('Total')].sum()
+    per_employee = per_employee.round(2)
+    summary_df = pd.DataFrame({
+        'Employee': per_employee.index,
+        'Total Hours': per_employee.values
+    })
+    # Grand total is sum of displayed employee totals
+    grand_total = per_employee.sum().round(2)
+    summary_df = pd.concat([summary_df, pd.DataFrame({'Employee': ['Grand Total'], 'Total Hours': [grand_total]})], ignore_index=True)
+    summary_df = pd.concat([summary_df, pd.DataFrame({'Employee': ['Grand Total'], 'Total Hours': [total_row['Total']]})], ignore_index=True)
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as writer:
+        details_df.to_excel(writer, sheet_name='Details')
+        ws = writer.book.create_sheet('Summary')
+        info = {
+            'Report Type': 'Project Report',
+            'Project': project_name if project_name else 'All Projects',
+            'Date From': date_from,
+            'Date To': date_to,
+            'Generated By': generated_by,
+            'Generated On': pd.Timestamp.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        r = 1
+        for k, v in info.items():
+            ws.cell(row=r, column=1, value=k)
+            ws.cell(row=r, column=2, value=v)
+            r += 1
+        table_start = r + 1
+        ws.cell(row=table_start, column=1, value='Employee')
+        ws.cell(row=table_start, column=2, value='Total Hours')
+        for i, rec in enumerate(summary_df.itertuples(index=False), start=1):
+            ws.cell(row=table_start + i, column=1, value=rec.Employee)
+            ws.cell(row=table_start + i, column=2, value=rec[1])
+        _apply_excel_formatting(writer.book)
+    out.seek(0)
+    return out
+
+# ----- HR Reporting Routes -----
+
+@app.route('/hr/reports')
+@role_required('HR')
+def hr_reports_page():
+    db = get_db()
+    employees = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
+    projects = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
+    return render_template('hr_reports.html', employees=employees, projects=projects)
+
+@app.route('/hr/export', methods=['POST'])
+@role_required('HR')
+def hr_export():
+    payload = request.get_json()
+    if not payload:
+        return jsonify({'error': 'Invalid request'}), 400
+    report_type = payload.get('type')
+    date_from = payload.get('date_from')
+    date_to = payload.get('date_to')
+    if not report_type or not date_from or not date_to:
+        return jsonify({'error': 'Missing required parameters'}), 400
+    generated_by = current_user.full_name or current_user.username
+    if report_type == 'employee':
+        employee_id = payload.get('employee_id')
+        if not employee_id:
+            return jsonify({'error': 'Employee ID required'}), 400
+        emp = get_db().execute('SELECT full_name FROM users WHERE id = ?', (employee_id,)).fetchone()
+        if not emp:
+            return jsonify({'error': 'Employee not found'}), 404
+        rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, payload.get('project_ids'))
+        excel_io = _generate_employee_excel(rows, emp['full_name'], date_from, date_to, generated_by)
+        sanitized_name = re.sub(r'[^A-Za-z0-9]+', '_', emp['full_name']).strip('_')
+        filename = f"{sanitized_name}_{date_from}_{date_to}.xlsx"
+    elif report_type == 'project':
+        project_id = payload.get('project_id')
+        project_name = None
+        if project_id:
+            proj = get_db().execute('SELECT name FROM projects WHERE id = ?', (project_id,)).fetchone()
+            if not proj:
+                return jsonify({'error': 'Project not found'}), 404
+            project_name = proj['name']
+        rows = _fetch_tasks_for_project_report(project_id, date_from, date_to)
+        excel_io = _generate_project_excel(rows, project_name, date_from, date_to, generated_by)
+        if project_name:
+            sanitized_proj = re.sub(r'[^A-Za-z0-9]+', '_', project_name).strip('_')
+        else:
+            sanitized_proj = 'all_projects'
+        filename = f"{sanitized_proj}_{date_from}_{date_to}.xlsx"
+    else:
+        return jsonify({'error': 'Invalid report type'}), 400
+    return send_file(
+        excel_io,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+@app.route('/hr/seed', methods=['POST'])
+@role_required('HR')
+def hr_seed():
+    summary = seed_mock_data()
+    return jsonify({'message': 'Database seeded', 'summary': summary}), 200
 
 @app.route('/hr/projects/delete/<int:project_id>', methods=['POST'])
 @role_required('HR')
@@ -1035,4 +1364,4 @@ if __name__ == '__main__':
     with app.app_context():
         init_db()
         seed_data()
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

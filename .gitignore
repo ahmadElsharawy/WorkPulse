@@ -48,3 +48,8 @@ pip-delete-this-directory.txt
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local seed scripts
+seed_and_report.py
+seed_and_report_script.py
+
