@@ -1524,6 +1524,7 @@ def add_employee():
         password = request.form['password']
         position = request.form.get('position', '')
         manager_usernames = request.form.getlist('managers')
+        subordinate_usernames = request.form.getlist('subordinates')
         project_ids = request.form.getlist('projects')
         role = 'Employee'
         pwd_hash = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -1543,6 +1544,12 @@ def add_employee():
                         manager_ids.append(mgr_row['id'])
                 set_manager_ids(employee_id, manager_ids)
                 
+                # Insert subordinate relationships
+                for sub_name in subordinate_usernames:
+                    sub_row = db.execute('SELECT id FROM users WHERE username = ?', (sub_name,)).fetchone()
+                    if sub_row:
+                        db.execute('INSERT INTO employee_managers (employee_id, manager_id) VALUES (?,?)', (sub_row['id'], employee_id))
+                
                 for p_id in project_ids:
                     hours_val = request.form.get(f'allocated_hours_{p_id}', '0').strip()
                     hours = int(hours_val) if hours_val.isdigit() else 0
@@ -1554,7 +1561,7 @@ def add_employee():
         except sqlite3.IntegrityError:
             flash('Username already exists.', 'danger')
             
-    # List all current employees to be chosen as managers
+    # List all current employees to be chosen as managers or subordinates
     employees = db.execute("SELECT * FROM users WHERE role = 'Employee'").fetchall()
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
     return render_template('add_employee.html', employees=employees, projects=projects)
@@ -1574,6 +1581,7 @@ def edit_employee(user_id):
         position = request.form.get('position', '')
         password = request.form.get('password', '').strip()
         manager_usernames = request.form.getlist('managers')
+        subordinate_usernames = request.form.getlist('subordinates')
         project_ids = request.form.getlist('projects')
         
         try:
@@ -1593,6 +1601,13 @@ def edit_employee(user_id):
                     manager_ids.append(mgr_row['id'])
             set_manager_ids(user_id, manager_ids)
             
+            # Sync subordinate relationships:
+            db.execute('DELETE FROM employee_managers WHERE manager_id = ?', (user_id,))
+            for sub_name in subordinate_usernames:
+                sub_row = db.execute('SELECT id FROM users WHERE username = ?', (sub_name,)).fetchone()
+                if sub_row:
+                    db.execute('INSERT INTO employee_managers (employee_id, manager_id) VALUES (?,?)', (sub_row['id'], user_id))
+            
             db.execute('DELETE FROM employee_projects WHERE employee_id = ?', (user_id,))
             for p_id in project_ids:
                 hours_val = request.form.get(f'allocated_hours_{p_id}', '0').strip()
@@ -1605,7 +1620,7 @@ def edit_employee(user_id):
         except sqlite3.IntegrityError:
             flash('Username already exists.', 'danger')
             
-    # List other employees to be chosen as managers
+    # List other employees to be chosen as managers or subordinates
     employees = db.execute("SELECT * FROM users WHERE role = 'Employee' AND id != ?", (user_id,)).fetchall()
     current_mgr_ids = get_manager_ids(user_id)
     current_managers = []
@@ -1614,12 +1629,21 @@ def edit_employee(user_id):
         if r:
             current_managers.append(r['username'])
             
+    # Get current subordinates
+    sub_rows = db.execute('''
+        SELECT u.username 
+        FROM users u
+        JOIN employee_managers em ON u.id = em.employee_id
+        WHERE em.manager_id = ?
+    ''', (user_id,)).fetchall()
+    current_subordinates = [r['username'] for r in sub_rows]
+            
     projects = db.execute("SELECT * FROM projects ORDER BY name").fetchall()
     current_proj_rows = db.execute("SELECT project_id, allocated_hours FROM employee_projects WHERE employee_id = ?", (user_id,)).fetchall()
     current_project_ids = [r['project_id'] for r in current_proj_rows]
     project_allocations = {r['project_id']: r['allocated_hours'] for r in current_proj_rows}
             
-    return render_template('edit_employee.html', user=user, employees=employees, current_managers=current_managers, projects=projects, current_project_ids=current_project_ids, project_allocations=project_allocations)
+    return render_template('edit_employee.html', user=user, employees=employees, current_managers=current_managers, current_subordinates=current_subordinates, projects=projects, current_project_ids=current_project_ids, project_allocations=project_allocations)
 
 @app.route('/hr/delete/<int:user_id>', methods=['POST'])
 @role_required('HR')
