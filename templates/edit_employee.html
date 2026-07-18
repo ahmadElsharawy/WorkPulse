@@ -1,69 +1,90 @@
 {% extends 'base.html' %}
-{% block title %}Edit Employee{% endblock %}
+{% block title %}{{ _('edit') }} {{ _('employees') }} – WorkPulse{% endblock %}
 {% block content %}
-<h2>Edit Employee</h2>
-<form method='post'>
-  <div class='mb-3'>
-    <label class='form-label'>Full Name</label>
-    <input type='text' name='full_name' class='form-control' value='{{ user.full_name }}' required>
+
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>{{ _('edit') }} {{ _('employees') }}</h1>
+    <p class='page-subtitle'>{{ 'تحديث تفاصيل الموظف ومسؤولياته' if current_lang == 'ar' else 'Update employee details and responsibilities' }} ({{ user.full_name }})</p>
   </div>
-  <div class='mb-3'>
-    <label class='form-label'>Position</label>
-    <input type='text' name='position' class='form-control' value='{{ user.position or "" }}' required>
-  </div>
-  <div class='mb-3'>
-    <label class='form-label'>Username</label>
-    <input type='text' name='username' class='form-control' value='{{ user.username }}' required>
-  </div>
-  <div class='mb-3'>
-    <label class='form-label'>Password</label>
-    <input type='password' name='password' class='form-control' placeholder='••••••••'>
-    <div class='form-text text-muted'>Leave blank to keep the current password. (اكتب كلمة مرور جديدة فقط في حال رغبتك في تغييرها، وإلا اترك الحقل فارغاً).</div>
-  </div>
-  <div class='mb-3'>
-    <label class='form-label'>Managers (optional - Hold Ctrl/Cmd to select multiple)</label>
-    <select name='managers' class='form-select' multiple>
-      {% for emp in employees %}
-        <option value='{{ emp.username }}' {% if emp.username in current_managers %}selected{% endif %}>{{ emp.full_name }} ({{ emp.username }})</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class='mb-3'>
-    <label class='form-label fw-bold'>Assigned Projects (choose one or more)</label>
-    <div class='border rounded p-3' style='max-height: 200px; overflow-y: auto; background-color: #f8f9fa;'>
-      <div class='form-check mb-2 pb-2 border-bottom'>
-        <input class='form-check-input' type='checkbox' id='selectAllProjects'>
-        <label class='form-check-label fw-bold' for='selectAllProjects'>
-          Select All / Deselect All
-        </label>
+  <a href='{{ url_for('hr_employees') }}' class='btn btn-secondary'>← {{ 'الموظفون' if current_lang == 'ar' else 'Employees' }}</a>
+</div>
+
+<div class='card p-4 mx-auto shadow-sm' style='max-width: 800px;'>
+  <form method='post'>
+    <div class='row g-3 mb-4'>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('full_name') }}</label>
+        <input type='text' name='full_name' class='form-control' value='{{ user.full_name }}' required>
       </div>
-      {% for proj in projects %}
-        <div class='row mb-2 align-items-center'>
-          <div class='col-auto'>
-            <input class='form-check-input project-checkbox' type='checkbox' name='projects' value='{{ proj.id }}' id='proj_{{ proj.id }}'
-                   {% if proj.id in current_project_ids %}checked{% endif %}>
-          </div>
-          <div class='col'>
-            <label class='form-check-label text-truncate d-block mb-0' for='proj_{{ proj.id }}'>
-              {{ proj.name }} <span class='text-muted small'>(Client: {{ proj.client }})</span>
-            </label>
-          </div>
-          <div class='col-md-4 col-sm-6'>
-            <div class='input-group input-group-sm'>
-              <span class='input-group-text'>Limit:</span>
-              <input type='number' name='allocated_hours_{{ proj.id }}' class='form-control project-hours-input' 
-                     placeholder='Unlimited (0)' min='0' step='1'
-                     value='{% if proj.id in current_project_ids %}{{ project_allocations[proj.id] or "" }}{% endif %}' disabled>
-              <span class='input-group-text'>hrs</span>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('position') }}</label>
+        <input type='text' name='position' class='form-control' value='{{ user.position or "" }}' required>
+      </div>
+    </div>
+
+    <div class='row g-3 mb-4'>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('username') }}</label>
+        <input type='text' name='username' class='form-control' value='{{ user.username }}' required>
+      </div>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ 'كلمة المرور الجديدة (اختياري)' if current_lang == 'ar' else 'New Password (Optional)' }}</label>
+        <input type='password' name='password' class='form-control' placeholder='••••••••'>
+        <div class='form-text text-muted'>{{ 'اترك الحقل فارغاً للاحتفاظ بكلمة المرور الحالية.' if current_lang == 'ar' else 'Leave blank to keep the current password.' }}</div>
+      </div>
+    </div>
+
+    <div class='mb-4'>
+      <label class='form-label fw-bold'>{{ 'المدراء المعتمدون لهذا الموظف (اختياري)' if current_lang == 'ar' else 'Approved Managers for this Employee (Optional)' }}</label>
+      <select name='managers' class='form-select' multiple size='3'>
+        {% for emp in employees %}
+          <option value='{{ emp.username }}' {% if emp.username in current_managers %}selected{% endif %}>{{ emp.full_name }} ({{ emp.username }})</option>
+        {% endfor %}
+      </select>
+      <div class='form-text'>{{ 'اضغط مع الاستمرار على Ctrl لتحديد أكثر من مدير' if current_lang == 'ar' else 'Hold Ctrl (Windows) or Cmd (Mac) to select multiple.' }}</div>
+    </div>
+
+    <div class='mb-4'>
+      <label class='form-label fw-bold mb-2'>{{ 'المشاريع المُسندة وحدود الساعات المخصصة' if current_lang == 'ar' else 'Assigned Projects & Allocated Hour Limits' }}</label>
+      <div class='check-list' style='max-height: 250px;'>
+        <div class='form-check mb-2 pb-2 border-bottom'>
+          <input class='form-check-input' type='checkbox' id='selectAllProjects'>
+          <label class='form-check-label fw-bold' for='selectAllProjects'>
+            {{ 'تحديد الكل / إلغاء التحديد' if current_lang == 'ar' else 'Select All / Deselect All' }}
+          </label>
+        </div>
+        {% for proj in projects %}
+          <div class='row mb-2 align-items-center g-2'>
+            <div class='col-auto'>
+              <input class='form-check-input project-checkbox' type='checkbox' name='projects' value='{{ proj.id }}' id='proj_{{ proj.id }}'
+                     {% if proj.id in current_project_ids %}checked{% endif %}>
+            </div>
+            <div class='col'>
+              <label class='form-check-label text-truncate d-block mb-0' for='proj_{{ proj.id }}'>
+                <strong>{{ proj.name }}</strong> <span class='text-muted small'>({{ 'العميل' if current_lang == 'ar' else 'Client' }}: {{ proj.client }})</span>
+              </label>
+            </div>
+            <div class='col-md-5 col-sm-6'>
+              <div class='input-group input-group-sm'>
+                <span class='input-group-text'>{{ 'الحد:' if current_lang == 'ar' else 'Limit:' }}</span>
+                <input type='number' name='allocated_hours_{{ proj.id }}' class='form-control project-hours-input' 
+                       placeholder='{{ "غير محدود (0)" if current_lang == "ar" else "Unlimited (0)" }}' min='0' step='1'
+                       value='{% if proj.id in current_project_ids %}{{ project_allocations[proj.id] or "" }}{% endif %}' disabled>
+                <span class='input-group-text'>{{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
+              </div>
             </div>
           </div>
-        </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
     </div>
-  </div>
-  <button type='submit' class='btn btn-primary'>Update</button>
-  <a href='{{ url_for('hr_employees') }}' class='btn btn-secondary ms-2'>Cancel</a>
-</form>
+
+    <div class='d-flex gap-2 justify-content-end mt-4'>
+      <button type='submit' class='btn btn-primary px-4'>{{ 'تعديل الموظف' if current_lang == 'ar' else 'Update Employee' }}</button>
+      <a href='{{ url_for('hr_employees') }}' class='btn btn-secondary px-4'>{{ _('cancel') }}</a>
+    </div>
+  </form>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -117,4 +138,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-

@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{{ project.name }} Detail – WorkPulse{% endblock %}
+{% block title %}{{ project.name }} – {{ _('project_details') }}{% endblock %}
 {% block content %}
 <div class='page-header'>
   <div>
-    <h1 class='page-title'>Project Detail</h1>
-    <p class='page-subtitle'>Settings and member allocations for {{ project.name }}</p>
+    <h1 class='page-title'>{{ _('project_details') }}</h1>
+    <p class='page-subtitle'>{{ 'إعدادات وتخصيص ساعات المشروع لـ' if current_lang == 'ar' else 'Settings and member allocations for' }} {{ project.name }}</p>
   </div>
-  <div>
-    <a href='{{ url_for("edit_project", project_id=project.id) }}' class='btn btn-primary me-2'>Edit Project</a>
-    <a href='{{ url_for("hr_projects") }}' class='btn btn-secondary'>← Back to Projects</a>
+  <div class='d-flex gap-2'>
+    <a href='{{ url_for("edit_project", project_id=project.id) }}' class='btn btn-primary'>{{ _('edit') }}</a>
+    <a href='{{ url_for("hr_projects") }}' class='btn btn-secondary'>← {{ _('projects') }}</a>
   </div>
 </div>
 
@@ -17,24 +17,24 @@
   <div class='col-md-4'>
     <div class='card h-100'>
       <div class='card-header bg-dark text-white fw-bold'>
-        Project Metadata
+        {{ 'بيانات المشروع' if current_lang == 'ar' else 'Project Metadata' }}
       </div>
       <div class='card-body p-4'>
         <div class='mb-3'>
-          <label class='text-muted small d-block mb-1'>Project Name</label>
+          <label class='text-muted small d-block mb-1'>{{ _('project_name') }}</label>
           <h4 class='mb-0'>{{ project.name }}</h4>
         </div>
         <hr>
         <div class='mb-3'>
-          <label class='text-muted small d-block mb-1'>Client</label>
+          <label class='text-muted small d-block mb-1'>{{ _('client') }}</label>
           <strong>{{ project.client }}</strong>
         </div>
         <div class='mb-3'>
-          <label class='text-muted small d-block mb-1'>Start Date</label>
+          <label class='text-muted small d-block mb-1'>{{ _('start_date') }}</label>
           <strong>{{ project.start_date or '–' }}</strong>
         </div>
         <div class='mb-3'>
-          <label class='text-muted small d-block mb-1'>End Date</label>
+          <label class='text-muted small d-block mb-1'>{{ _('end_date') }}</label>
           <strong>{{ project.end_date or '–' }}</strong>
         </div>
       </div>
@@ -43,16 +43,16 @@
 
   <!-- Assigned Members & Hour Balances -->
   <div class='col-md-8'>
-    <div class='section-title'>Assigned Members & Hours Balance</div>
+    <div class='section-title'>{{ 'الموظفون المعينون ورصيد الساعات' if current_lang == 'ar' else 'Assigned Members & Hours Balance' }}</div>
     <div class='card'>
       <div class='table-responsive'>
         <table class='table mb-0 align-middle'>
           <thead>
             <tr>
-              <th class='ps-3'>Employee Name</th>
-              <th class='text-center'>Allocated Limit</th>
-              <th class='text-center'>Actual Worked</th>
-              <th class='text-end pe-3'>Remaining Balance</th>
+              <th class='ps-3'>{{ _('employees') }}</th>
+              <th class='text-center'>{{ _('allocated') }}</th>
+              <th class='text-center'>{{ _('worked') }}</th>
+              <th class='text-end pe-3'>{{ _('remaining') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -64,31 +64,31 @@
               </td>
               <td class='text-center'>
                 {% if emp.allocated_hours == 0 %}
-                  <span class='text-muted'>Unlimited</span>
+                  <span class='text-muted'>{{ _('unlimited') }}</span>
                 {% else %}
-                  <strong>{{ "%.2f"|format(emp.allocated_hours) }} hrs</strong>
+                  <strong>{{ "%.2f"|format(emp.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</strong>
                 {% endif %}
               </td>
               <td class='text-center'>
-                {{ "%.2f"|format(emp.worked_hours) }} hrs
+                {{ "%.2f"|format(emp.worked_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
               </td>
               <td class='text-end pe-3'>
                 {% if emp.allocated_hours == 0 %}
-                  <span class='badge bg-secondary px-2 py-1'>Unlimited</span>
+                  <span class='badge bg-secondary px-2 py-1'>{{ _('unlimited') }}</span>
                 {% else %}
                   {% if emp.remaining_hours < 0 %}
-                    <span class='badge bg-danger px-2 py-1'>{{ "%.2f"|format(emp.remaining_hours) }} hrs</span>
+                    <span class='badge bg-danger px-2 py-1'>{{ "%.2f"|format(emp.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
                   {% elif emp.remaining_hours < 5 %}
-                    <span class='badge bg-warning text-dark px-2 py-1'>{{ "%.2f"|format(emp.remaining_hours) }} hrs</span>
+                    <span class='badge bg-warning text-dark px-2 py-1'>{{ "%.2f"|format(emp.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
                   {% else %}
-                    <span class='badge bg-success px-2 py-1'>{{ "%.2f"|format(emp.remaining_hours) }} hrs</span>
+                    <span class='badge bg-success px-2 py-1'>{{ "%.2f"|format(emp.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
                   {% endif %}
                 {% endif %}
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan='4' class='text-center text-muted py-4'>No employees assigned to this project.</td>
+              <td colspan='4' class='text-center text-muted py-4'>{{ 'لا يوجد موظفون معينون لهذا المشروع حالياً.' if current_lang == 'ar' else 'No employees assigned to this project.' }}</td>
             </tr>
             {% endfor %}
           </tbody>

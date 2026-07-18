@@ -1,45 +1,47 @@
 {% extends 'base.html' %}
-{% block title %}My Team - WorkPulse{% endblock %}
+{% block title %}{{ 'فريقي' if current_lang == 'ar' else 'My Team' }} – WorkPulse{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>Employees Managed by Me</h2>
-  <a href="{{ url_for('employee_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>{{ 'الموظفون التابعون لي' if current_lang == 'ar' else 'Employees Managed by Me' }}</h1>
+    <p class='page-subtitle'>{{ 'عرض الموظفين تحت إدارتك المباشرة ومهامهم' if current_lang == 'ar' else 'View employees under your direct supervision and their tasks' }}</p>
+  </div>
+  <a href='{{ url_for('employee_dashboard') }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
 </div>
 
 {% if subordinates %}
-<div class="row">
-  <div class="col-12">
-    <div class="card shadow-sm">
-      <div class="card-body p-0">
-        <table class="table table-striped table-hover mb-0">
-          <thead class="table-dark">
-            <tr>
-              <th>Full Name</th>
-              <th>Username</th>
-              <th>Position</th>
-              <th class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for sub in subordinates %}
-            <tr>
-              <td><strong>{{ sub.full_name }}</strong></td>
-              <td>@{{ sub.username }}</td>
-              <td>{{ sub.position or '-' }}</td>
-              <td class="text-end">
-                <a href="{{ url_for('view_subordinate_tasks', sub_id=sub.id) }}" class="btn btn-primary btn-sm">View Tasks</a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
+<div class='card shadow-sm'>
+  <div class='table-responsive'>
+    <table class='table mb-0 align-middle'>
+      <thead>
+        <tr>
+          <th>{{ _('full_name') }}</th>
+          <th>{{ _('username') }}</th>
+          <th>{{ _('position') }}</th>
+          <th class='text-end pe-4'>{{ _('actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in subordinates %}
+        <tr>
+          <td class='ps-3'><strong>{{ sub.full_name }}</strong></td>
+          <td><code class='text-secondary'>@{{ sub.username }}</code></td>
+          <td>{{ sub.position or '–' }}</td>
+          <td class='text-end pe-4'>
+            <a href='{{ url_for("view_subordinate_tasks", sub_id=sub.id) }}' class='btn btn-primary btn-sm'>
+              {{ 'عرض المهام' if current_lang == 'ar' else 'View Tasks' }}
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 {% else %}
-<div class="alert alert-info text-center">
-  You are not currently managing any employees.
+<div class='alert alert-info text-center'>
+  {{ 'لا توجد حسابات موظفين مسجلة تحت إشرافك حالياً.' if current_lang == 'ar' else 'You are not currently managing any employees.' }}
 </div>
 {% endif %}
 {% endblock %}

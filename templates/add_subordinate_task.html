@@ -1,12 +1,20 @@
 {% extends 'base.html' %}
 {% block title %}{{ _('add_subordinate_task') }} – WorkPulse{% endblock %}
 {% block content %}
-<div class='card p-4 mx-auto' style='max-width: 600px;'>
-  <h2 class='mb-4'>{{ _('add_subordinate_task') }} ({{ subordinate.full_name or subordinate.username }})</h2>
+
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>{{ _('add_subordinate_task') }}</h1>
+    <p class='page-subtitle'>{{ 'إسناد مهمة جديدة للموظف' if current_lang == 'ar' else 'Assign a new task to' }} {{ subordinate.full_name or subordinate.username }}</p>
+  </div>
+  <a href='{{ url_for('view_subordinate_tasks', sub_id=subordinate.id) }}' class='btn btn-secondary'>← {{ 'مهام الموظف' if current_lang == 'ar' else 'Subordinate Tasks' }}</a>
+</div>
+
+<div class='card p-4 mx-auto shadow-sm' style='max-width: 600px;'>
   <form method='post'>
     <div class='mb-3'>
       <label class='form-label'>{{ _('task_title') }}</label>
-      <input type='text' name='title' class='form-control' required>
+      <input type='text' name='title' class='form-control' placeholder='{{ "اسم المهمة أو النشاط" if current_lang == "ar" else "e.g. Design foundation layout" }}' required>
     </div>
     <div class='mb-3'>
       <label class='form-label'>{{ _('projects') }}</label>
@@ -17,14 +25,13 @@
         {% endfor %}
       </select>
     </div>
-    
 
     <div class='mb-4'>
       <label class='form-label'>{{ _('description') }}</label>
-      <textarea name='description' class='form-control' rows='4'></textarea>
+      <textarea name='description' class='form-control' rows='4' placeholder='{{ "ملاحظات تفصيلية حول ما سيتم إنجازه (اختياري)" if current_lang == "ar" else "Detailed notes about what will be done (optional)" }}'></textarea>
     </div>
     
-    <div class='d-flex gap-2'>
+    <div class='d-flex gap-2 justify-content-end'>
       <button type='submit' class='btn btn-primary px-4'>{{ _('add_task') }}</button>
       <a href='{{ url_for('view_subordinate_tasks', sub_id=subordinate.id) }}' class='btn btn-secondary px-4'>{{ _('cancel') }}</a>
     </div>

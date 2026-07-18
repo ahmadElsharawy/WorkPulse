@@ -1,65 +1,80 @@
 {% extends 'base.html' %}
-{% block title %}Subordinate Tasks{% endblock %}
+{% block title %}{{ _('subordinate_tasks') }} – WorkPulse{% endblock %}
 {% block content %}
-<div class='d-flex justify-content-between align-items-center mb-4'>
-  <h2>Tasks for {{ subordinate.full_name }} ({{ subordinate.username }})</h2>
+
+<div class='page-header'>
   <div>
-    <a href='{{ url_for('add_subordinate_task', sub_id=subordinate.id) }}' class='btn btn-success'>Add Task</a>
-    <a href='{{ url_for('employee_dashboard') }}' class='btn btn-secondary ms-2'>Back to Dashboard</a>
+    <h1 class='page-title'>{{ 'مهام الموظف' if current_lang == 'ar' else 'Tasks for' }} {{ subordinate.full_name }}</h1>
+    <p class='page-subtitle'>{{ 'إدارة وتتبع مهام الموظف التابع وتفاصيل تشغيلها' if current_lang == 'ar' else 'Manage and track tasks for employee' }} (@{{ subordinate.username }})</p>
+  </div>
+  <div class='d-flex gap-2'>
+    <a href='{{ url_for('add_subordinate_task', sub_id=subordinate.id) }}' class='btn btn-success'>+ {{ _('add_task') }}</a>
+    <a href='{{ url_for('employee_dashboard') }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
   </div>
 </div>
-<table class='table table-striped'>
-  <thead>
-    <tr>
-      <th>Title</th>
-      <th>Project</th>
-      <th>Description</th>
-      <th>Status</th>
-      <th>Created At</th>
-      <th>Running Duration</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for task in tasks %}
-    <tr>
-      <td>{{ task.title }}</td>
-      <td>
-        {% if task.project_name %}
-          <span class='badge bg-info text-dark'>{{ task.project_name }}</span>
+
+<div class='card shadow-sm'>
+  <div class='table-responsive'>
+    <table class='table mb-0 align-middle'>
+      <thead>
+        <tr>
+          <th class='ps-3'>{{ _('task_title') }}</th>
+          <th>{{ _('projects') }}</th>
+          <th>{{ _('description') }}</th>
+          <th>{{ _('status') }}</th>
+          <th>{{ 'تاريخ الإنشاء' if current_lang == 'ar' else 'Created At' }}</th>
+          <th>{{ _('duration') }}</th>
+          <th class='text-end pe-4'>{{ _('actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr>
+          <td class='ps-3'><strong>{{ task.title }}</strong></td>
+          <td>
+            {% if task.project_name %}
+              <span class='badge bg-info-subtle text-info border border-info-subtle'>{{ task.project_name }}</span>
+            {% else %}
+              <span class='text-muted'>–</span>
+            {% endif %}
+          </td>
+          <td class='task-desc-cell'>{{ task.description or '–' }}</td>
+          <td>
+            {% if task.status == 'Running' %}
+              <span class='badge badge-running text-white'>
+                <span class='spinner-grow spinner-grow-sm me-1' style='width:.45rem;height:.45rem;'></span>{{ _('running') }}
+              </span>
+            {% elif task.status == 'Pause' %}
+              <span class='badge badge-pause text-dark'>{{ _('pause') }}</span>
+            {% elif task.status == 'Finish' %}
+              <span class='badge badge-finish text-white'>{{ _('finish') }}</span>
+            {% else %}
+              <span class='badge bg-secondary'>{{ task.status }}</span>
+            {% endif %}
+          </td>
+          <td><span class='text-muted small'>{{ task.created_at }}</span></td>
+          <td style='font-family:monospace;'>
+            <span class='duration-display' data-task-id='{{ task.id }}' data-status='{{ task.status }}' data-last-started='{{ task.last_started_at or "" }}' data-accumulated='{{ task|total_seconds }}'>{{ task|format_duration }}</span>
+          </td>
+          <td class='text-end pe-4'>
+            {% if task.creator_id == current_user.id %}
+              <form action='{{ url_for("delete_task", task_id=task.id) }}' method='post' style='display:inline;'>
+                <button type='submit' class='btn btn-danger btn-sm' onclick="return confirm('{{ 'هل أنت متأكد من حذف هذه المهمة؟' if current_lang == 'ar' else 'Are you sure you want to delete this task?' }}');">{{ _('delete') }}</button>
+              </form>
+            {% else %}
+              <span class='text-muted small'>{{ 'مُسندة بواسطة مستخدم آخر' if current_lang == 'ar' else 'Assigned by other' }}</span>
+            {% endif %}
+          </td>
+        </tr>
         {% else %}
-          <span class='text-muted'>-</span>
-        {% endif %}
-      </td>
-      <td class="task-desc-cell">{{ task.description }}</td>
-      <td>
-        {% if task.status == 'Running' %}
-          <span class='badge bg-primary'><span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width: 0.5rem; height: 0.5rem; vertical-align: middle;"></span>Running</span>
-        {% elif task.status == 'Pause' %}
-          <span class='badge bg-warning text-dark'>Pause</span>
-        {% elif task.status == 'Finish' %}
-          <span class='badge bg-success'>Finish</span>
-        {% else %}
-          <span class='badge bg-secondary'>{{ task.status }}</span>
-        {% endif %}
-      </td>
-      <td>{{ task.created_at|datetimeformat }}</td>
-      <td>
-        <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
-      </td>
-      <td>
-        {% if task.creator_id == current_user.id %}
-          <form action="{{ url_for('delete_task', task_id=task.id) }}" method="post" style="display:inline;">
-            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this task?');">Delete</button>
-          </form>
-        {% else %}
-          <span class="text-muted small">Assigned by other</span>
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+        <tr>
+          <td colspan='7' class='text-center text-muted py-4'>{{ _('no_tasks_found') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {

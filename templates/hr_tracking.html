@@ -1,16 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}Live Task Tracking - WorkPulse{% endblock %}
+{% block title %}{{ 'المتابعة الحية للمهام' if current_lang == 'ar' else 'Live Task Tracking' }} – WorkPulse{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h2>All Employee Tasks Live Tracking</h2>
-  <a href="{{ url_for('hr_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>{{ 'المتابعة الحية للمهام' if current_lang == 'ar' else 'Live Task Tracking' }}</h1>
+    <p class='page-subtitle'>{{ 'مراقبة فورية للمهام النشطة وعدادات التشغيل الحالية لكافة فرق العمل' if current_lang == 'ar' else 'Real-time task duration monitoring and active runs' }}</p>
+  </div>
+  <a href='{{ url_for("hr_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
 </div>
 
 <div class="card mb-4 shadow-sm">
   <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">Filter Live Tracking Tasks</h5>
+    <h5 class="mb-0">🔍 {{ _('filter') }}</h5>
     <button class="btn btn-outline-light btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="true" aria-controls="filterCollapse">
-      Toggle Filters
+      {{ 'طي الفلاتر' if current_lang == 'ar' else 'Toggle Filters' }}
     </button>
   </div>
   <div class="collapse show" id="filterCollapse">
@@ -21,8 +25,8 @@
           
           <!-- Employees Filter -->
           <div class="col-md-3">
-            <label class="form-label fw-bold">Employees</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+            <label class="form-label fw-bold">{{ _('employees') }}</label>
+            <div class="check-list">
               {% for emp in employees_list %}
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" name="employees" value="{{ emp.id }}" id="emp_{{ emp.id }}"
@@ -37,13 +41,13 @@
           
           <!-- Projects Filter -->
           <div class="col-md-3">
-            <label class="form-label fw-bold">Projects</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+            <label class="form-label fw-bold">{{ _('projects') }}</label>
+            <div class="check-list">
               <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="projects" value="none" id="proj_none"
                   {% if 'none' in selected_projects %}checked{% endif %}>
                 <label class="form-check-label" for="proj_none">
-                  <em>No Project</em>
+                  <em>{{ 'بدون مشروع' if current_lang == 'ar' else 'No Project' }}</em>
                 </label>
               </div>
               {% for proj in projects_list %}
@@ -60,14 +64,17 @@
           
           <!-- Status Filter -->
           <div class="col-md-2">
-            <label class="form-label fw-bold">Status</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+            <label class="form-label fw-bold">{{ _('status') }}</label>
+            <div class="check-list">
               {% for status in ['Running', 'Pause', 'Finish'] %}
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" name="statuses" value="{{ status }}" id="status_{{ status }}"
                     {% if status in selected_statuses %}checked{% endif %}>
                   <label class="form-check-label" for="status_{{ status }}">
-                    {{ status }}
+                    {% if status == 'Running' %}{{ _('running') }}
+                    {% elif status == 'Pause' %}{{ _('pause') }}
+                    {% elif status == 'Finish' %}{{ _('finish') }}
+                    {% else %}{{ status }}{% endif %}
                   </label>
                 </div>
               {% endfor %}
@@ -76,8 +83,8 @@
 
           <!-- Assigned By Filter -->
           <div class="col-md-2">
-            <label class="form-label fw-bold">Assigned By</label>
-            <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto; background-color: #f8f9fa;">
+            <label class="form-label fw-bold">{{ 'مُسند بواسطة' if current_lang == 'ar' else 'Assigned By' }}</label>
+            <div class="check-list">
               {% for creator in creators_list %}
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" name="creators" value="{{ creator.id }}" id="creator_{{ creator.id }}"
@@ -92,21 +99,21 @@
 
           <!-- Created At Date Range -->
           <div class="col-md-2">
-            <label class="form-label fw-bold">Created At</label>
+            <label class="form-label fw-bold">{{ 'تاريخ الإنشاء' if current_lang == 'ar' else 'Created At' }}</label>
             <div class="mb-2">
-              <input type="date" class="form-control form-control-sm" name="created_from" value="{{ created_from }}" placeholder="From">
-              <span class="text-muted small" style="font-size: 0.75rem;">From</span>
+              <input type="date" class="form-control form-control-sm" name="created_from" value="{{ created_from }}">
+              <span class="text-muted small" style="font-size: 0.75rem;">{{ _('from') }}</span>
             </div>
             <div>
-              <input type="date" class="form-control form-control-sm" name="created_to" value="{{ created_to }}" placeholder="To">
-              <span class="text-muted small" style="font-size: 0.75rem;">To</span>
+              <input type="date" class="form-control form-control-sm" name="created_to" value="{{ created_to }}">
+              <span class="text-muted small" style="font-size: 0.75rem;">{{ _('to') }}</span>
             </div>
           </div>
           
         </div>
         <div class="d-flex justify-content-end gap-2 mt-3">
-          <a href="{{ url_for('hr_tracking') }}?reset=1" class="btn btn-secondary btn-sm">Reset Filters</a>
-          <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+          <button type="submit" class="btn btn-primary btn-sm">{{ _('filter') }}</button>
+          <a href="{{ url_for('hr_tracking') }}?reset=1" class="btn btn-secondary btn-sm">{{ 'إعادة تعيين' if current_lang == 'ar' else 'Reset Filters' }}</a>
         </div>
       </form>
     </div>
@@ -115,52 +122,54 @@
 
 <div id="live-tasks-wrapper">
 {% if tasks %}
-<div class='row mt-4'>
-  <div class='col-12'>
-    <table class='table table-striped table-sortable' data-sortable>
+<div class='card shadow-sm'>
+  <div class='table-responsive'>
+    <table class='table mb-0 align-middle'>
       <thead>
         <tr>
-          <th>Employee Name</th>
-          <th>Project</th>
-          <th>Task Title</th>
-          <th>Description</th>
-          <th>Status</th>
-          <th>Created At</th>
-          <th>Running Duration</th>
-          <th>Assigned By</th>
+          <th class='ps-3'>{{ _('employees') }}</th>
+          <th>{{ _('projects') }}</th>
+          <th>{{ _('task_title') }}</th>
+          <th>{{ _('description') }}</th>
+          <th>{{ _('status') }}</th>
+          <th>{{ 'تاريخ الإنشاء' if current_lang == 'ar' else 'Created At' }}</th>
+          <th>{{ _('duration') }}</th>
+          <th class='pe-3'>{{ 'مُسند بواسطة' if current_lang == 'ar' else 'Assigned By' }}</th>
         </tr>
       </thead>
       <tbody>
         {% for task in tasks %}
         <tr>
-          <td><strong>{{ task.employee_name }}</strong></td>
+          <td class='ps-3'><strong>{{ task.employee_name }}</strong></td>
           <td>
             {% if task.project_name %}
-              <span class='badge bg-info text-dark'>{{ task.project_name }}</span>
+              <span class='badge bg-info-subtle text-info border border-info-subtle'>{{ task.project_name }}</span>
             {% else %}
-              <span class='text-muted'>-</span>
+              <span class='text-muted'>–</span>
             {% endif %}
           </td>
-          <td>{{ task.title }}</td>
-          <td class="task-desc-cell">{{ task.description }}</td>
+          <td><strong>{{ task.title }}</strong></td>
+          <td class="task-desc-cell">{{ task.description or '–' }}</td>
           <td>
             {% if task.status == 'Running' %}
-              <span class='badge bg-primary'><span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true" style="width: 0.5rem; height: 0.5rem; vertical-align: middle;"></span>Running</span>
+              <span class='badge badge-running text-white'>
+                <span class='spinner-grow spinner-grow-sm me-1' style='width:.45rem;height:.45rem;'></span>{{ _('running') }}
+              </span>
             {% elif task.status == 'Pause' %}
-              <span class='badge bg-warning text-dark'>Pause</span>
+              <span class='badge badge-pause text-dark'>{{ _('pause') }}</span>
             {% elif task.status == 'Finish' %}
-              <span class='badge bg-success'>Finish</span>
+              <span class='badge badge-finish text-white'>{{ _('finish') }}</span>
             {% else %}
               <span class='badge bg-secondary'>{{ task.status }}</span>
             {% endif %}
           </td>
-          <td>{{ task.created_at|datetimeformat }}</td>
-          <td>
+          <td><span class='text-muted small'>{{ task.created_at }}</span></td>
+          <td style='font-family:monospace;'>
             <span class="duration-display" data-task-id="{{ task.id }}" data-status="{{ task.status }}" data-last-started="{{ task.last_started_at or '' }}" data-accumulated="{{ task|total_seconds }}">{{ task|format_duration }}</span>
           </td>
-          <td>
+          <td class='pe-3'>
             {% if task.creator_id == task.employee_id %}
-              <span class='text-muted'>Self</span>
+              <span class='text-muted small'>{{ 'ذاتي' if current_lang == 'ar' else 'Self' }}</span>
             {% else %}
               <strong>{{ task.creator_name }}</strong>
             {% endif %}
@@ -176,14 +185,18 @@
 {% if total_pages > 1 %}
 <nav class="d-flex justify-content-between align-items-center mt-3">
   <div class="text-muted small">
-    Showing tasks <strong>{{ showing_from }}</strong> to <strong>{{ showing_to }}</strong> of <strong>{{ total_tasks }}</strong>
+    {% if current_lang == 'ar' %}
+      عرض المهام من <strong>{{ showing_from }}</strong> إلى <strong>{{ showing_to }}</strong> من إجمالي <strong>{{ total_tasks }}</strong> مهمة
+    {% else %}
+      Showing tasks <strong>{{ showing_from }}</strong> to <strong>{{ showing_to }}</strong> of <strong>{{ total_tasks }}</strong>
+    {% endif %}
   </div>
   <ul class="pagination pagination-sm mb-0">
     <li class="page-item {% if page == 1 %}disabled{% endif %}">
-      <a class="page-link" href="{{ page_url(1) }}">First</a>
+      <a class="page-link" href="{{ page_url(1) }}">{{ 'الأول' if current_lang == 'ar' else 'First' }}</a>
     </li>
     <li class="page-item {% if page == 1 %}disabled{% endif %}">
-      <a class="page-link" href="{{ page_url(page - 1) }}">Previous</a>
+      <a class="page-link" href="{{ page_url(page - 1) }}">{{ 'السابق' if current_lang == 'ar' else 'Previous' }}</a>
     </li>
     
     {% for p in page_range %}
@@ -193,21 +206,25 @@
     {% endfor %}
     
     <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-      <a class="page-link" href="{{ page_url(page + 1) }}">Next</a>
+      <a class="page-link" href="{{ page_url(page + 1) }}">{{ 'التالي' if current_lang == 'ar' else 'Next' }}</a>
     </li>
     <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-      <a class="page-link" href="{{ page_url(total_pages) }}">Last</a>
+      <a class="page-link" href="{{ page_url(total_pages) }}">{{ 'الأخير' if current_lang == 'ar' else 'Last' }}</a>
     </li>
   </ul>
 </nav>
 {% else %}
 <div class="text-muted small mt-2">
-  Showing all <strong>{{ total_tasks }}</strong> tasks
+  {% if current_lang == 'ar' %}
+    عرض كافة المهام البالغة <strong>{{ total_tasks }}</strong> مهمة
+  {% else %}
+    Showing all <strong>{{ total_tasks }}</strong> tasks
+  {% endif %}
 </div>
 {% endif %}
 {% else %}
 <hr class='my-5'>
-<p class='text-muted text-center'>No tasks found in the system.</p>
+<p class='text-muted text-center'>{{ _('no_tasks_found') }}</p>
 {% endif %}
 </div>
 
@@ -223,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!lastStartedStr) return;
             
             const lastStarted = new Date(lastStartedStr + "Z");
-            const accumulated = parseInt(el.getAttribute("data-accumulated") || "0", 10);
+            const accumulated = parseInt(el.getAttribute("data-accumulated" || "0", 10));
             
             const elapsedSeconds = Math.max(0, Math.floor((now - lastStarted) / 1000));
             const totalSeconds = accumulated + elapsedSeconds;
