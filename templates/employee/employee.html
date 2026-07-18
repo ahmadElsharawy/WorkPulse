@@ -261,16 +261,16 @@
                   {% else %}
                     {% if proj.remaining_hours < 0 %}
                       <span class='badge bg-danger px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>
-                        {{ "%.2f"|format(proj.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
+                        {{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
                         <span class='d-block' style='font-size:0.7rem;font-weight:normal;'>⚠️ {{ _('over_budget') }}</span>
                       </span>
                     {% elif proj.remaining_hours < (0.2 * proj.allocated_hours) %}
                       <span class='badge bg-warning text-dark px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>
-                        {{ "%.2f"|format(proj.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
+                        {{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
                         <span class='d-block' style='font-size:0.7rem;font-weight:normal;'>⚠️ {{ _('near_limit') }}</span>
                       </span>
                     {% else %}
-                      <span class='badge bg-success px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
+                      <span class='badge bg-success px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
                     {% endif %}
                   {% endif %}
                 </td>

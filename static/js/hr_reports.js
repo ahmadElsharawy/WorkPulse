@@ -1,13 +1,13 @@
-// hr_reports.js – Handles HR report UI interactions with persisted filter settings
+// hr_reports.js – Cleaned version without unused category filter code
 
 document.addEventListener('DOMContentLoaded', function() {
-  // ---------- Initialise date pickers (Flatpickr) ----------
+  // Initialise date pickers (Flatpickr)
   flatpickr('#dateFrom', { dateFormat: 'Y-m-d' });
   flatpickr('#dateTo',   { dateFormat: 'Y-m-d' });
   flatpickr('#projDateFrom', { dateFormat: 'Y-m-d' });
   flatpickr('#projDateTo',   { dateFormat: 'Y-m-d' });
 
-  // ---------- Helper utilities ----------
+  // Helper utilities
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -30,10 +30,8 @@ document.addEventListener('DOMContentLoaded', function() {
     try { data = JSON.parse(raw); } catch (_) { return; }
     // Employee report filters
     if (data.employee) {
-      const { id, category, dateFrom, dateTo, project_ids } = data.employee;
+      const { id, dateFrom, dateTo, project_ids } = data.employee;
       if (id) document.getElementById('employeeSelect').value = id;
-      const catSel = document.getElementById('categorySelect');
-      if (catSel && category) catSel.value = category;
       if (dateFrom) document.getElementById('dateFrom').value = dateFrom;
       if (dateTo) document.getElementById('dateTo').value = dateTo;
       if (Array.isArray(project_ids)) {
@@ -45,10 +43,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Project report filters
     if (data.project) {
-      const { id, category, dateFrom, dateTo } = data.project;
+      const { id, dateFrom, dateTo } = data.project;
       if (id) document.getElementById('projectSelectReport').value = id;
-      const projCatSel = document.getElementById('projCategorySelect');
-      if (projCatSel && category) projCatSel.value = category;
       if (dateFrom) document.getElementById('projDateFrom').value = dateFrom;
       if (dateTo) document.getElementById('projDateTo').value = dateTo;
     }
@@ -64,9 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Attach change listeners to keep the storage in sync as the user modifies fields
-  // Employee report fields
   const employeeSelect = document.getElementById('employeeSelect');
-  const categorySelect = document.getElementById('categorySelect');
   const dateFromEmp = document.getElementById('dateFrom');
   const dateToEmp = document.getElementById('dateTo');
   const projectSelect = document.getElementById('projectSelect');
@@ -75,13 +69,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const stored = (JSON.parse(localStorage.getItem(STORAGE_KEY)) || {});
     const emp = stored.employee || {};
     emp.id = this.value;
-    stored.employee = emp;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  });
-  if (categorySelect) categorySelect.addEventListener('change', function() {
-    const stored = (JSON.parse(localStorage.getItem(STORAGE_KEY)) || {});
-    const emp = stored.employee || {};
-    emp.category = this.value;
     stored.employee = emp;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   });
@@ -109,7 +96,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Project report fields
   const projectSelectReport = document.getElementById('projectSelectReport');
-  const projCategorySelect = document.getElementById('projCategorySelect');
   const dateFromProj = document.getElementById('projDateFrom');
   const dateToProj = document.getElementById('projDateTo');
 
@@ -117,13 +103,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const stored = (JSON.parse(localStorage.getItem(STORAGE_KEY)) || {});
     const proj = stored.project || {};
     proj.id = this.value;
-    stored.project = proj;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-  });
-  if (projCategorySelect) projCategorySelect.addEventListener('change', function() {
-    const stored = (JSON.parse(localStorage.getItem(STORAGE_KEY)) || {});
-    const proj = stored.project || {};
-    proj.category = this.value;
     stored.project = proj;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   });
@@ -142,12 +121,11 @@ document.addEventListener('DOMContentLoaded', function() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   });
 
-  // ---------- Export employee report ----------
+  // Export employee report
   const exportEmployeeBtn = document.getElementById('exportEmployeeBtn');
   if (exportEmployeeBtn) {
     exportEmployeeBtn.addEventListener('click', function() {
       const employeeId = employeeSelect.value;
-      const category = categorySelect ? categorySelect.value : null;
       const dateFrom = dateFromEmp.value;
       const dateTo = dateToEmp.value;
       const projectIds = Array.from(projectSelect.selectedOptions).map(o => o.value);
@@ -157,8 +135,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      // Ensure current filters are saved
-      saveFilters({ employee: { id: employeeId, category, dateFrom, dateTo, project_ids: projectIds } });
+      // Save filters
+      saveFilters({ employee: { id: employeeId, dateFrom, dateTo, project_ids: projectIds } });
 
       fetch('/hr/export', {
         method: 'POST',
@@ -166,7 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({
           type: 'employee',
           employee_id: employeeId,
-          category: category || null,
           date_from: dateFrom,
           date_to: dateTo,
           project_ids: projectIds
@@ -177,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const disposition = res.headers.get('Content-Disposition');
           let filename = 'employee_report.xlsx';
           if (disposition && disposition.includes('filename=')) {
-            filename = disposition.split('filename=')[1].replace(/"|'/g, '');
+            filename = disposition.split('filename=')[1].replace(/\"|'/g, '');
           }
           return res.blob().then(blob => downloadBlob(blob, filename));
         })
@@ -185,12 +162,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ---------- Print employee report ----------
+  // Print employee report
   const printEmployeeBtn = document.getElementById('printEmployeeBtn');
   if (printEmployeeBtn) {
     printEmployeeBtn.addEventListener('click', function() {
       const employeeId = employeeSelect.value;
-      const category = categorySelect ? categorySelect.value : null;
       const dateFrom = dateFromEmp.value;
       const dateTo = dateToEmp.value;
       const projectIds = Array.from(projectSelect.selectedOptions).map(o => o.value);
@@ -200,25 +176,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      saveFilters({ employee: { id: employeeId, category, dateFrom, dateTo, project_ids: projectIds } });
+      saveFilters({ employee: { id: employeeId, dateFrom, dateTo, project_ids: projectIds } });
 
       let url = `/hr/reports/print?type=employee&employee_id=${employeeId}&date_from=${dateFrom}&date_to=${dateTo}`;
-      if (category) url += `&category=${category}`;
       if (projectIds.length > 0) {
-        projectIds.forEach(pid => {
-          url += `&project_ids=${pid}`;
-        });
+        projectIds.forEach(pid => { url += `&project_ids=${pid}`; });
       }
-      window.open(url, '_blank');
+      const printWin = window.open(url, '_blank');
+      if (printWin) { printWin.focus(); }
     });
   }
 
-  // ---------- Export project report ----------
+  // Export project report
   const exportProjectBtn = document.getElementById('exportProjectBtn');
   if (exportProjectBtn) {
     exportProjectBtn.addEventListener('click', function() {
       const projectId = projectSelectReport.value;
-      const category = projCategorySelect ? projCategorySelect.value : null;
       const dateFrom = dateFromProj.value;
       const dateTo = dateToProj.value;
 
@@ -228,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       // Persist project‑report filter values
-      saveFilters({ project: { id: projectId, category, dateFrom, dateTo } });
+      saveFilters({ project: { id: projectId, dateFrom, dateTo } });
 
       fetch('/hr/export', {
         method: 'POST',
@@ -236,7 +209,6 @@ document.addEventListener('DOMContentLoaded', function() {
         body: JSON.stringify({
           type: 'project',
           project_id: projectId || null,
-          category: category || null,
           date_from: dateFrom,
           date_to: dateTo
         })
@@ -246,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const disposition = res.headers.get('Content-Disposition');
           let filename = 'project_report.xlsx';
           if (disposition && disposition.includes('filename=')) {
-            filename = disposition.split('filename=')[1].replace(/"|'/g, '');
+            filename = disposition.split('filename=')[1].replace(/\"|'/g, '');
           }
           return res.blob().then(blob => downloadBlob(blob, filename));
         })
@@ -254,12 +226,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // ---------- Print project report ----------
+  // Print project report
   const printProjectBtn = document.getElementById('printProjectBtn');
   if (printProjectBtn) {
     printProjectBtn.addEventListener('click', function() {
       const projectId = projectSelectReport.value;
-      const category = projCategorySelect ? projCategorySelect.value : null;
       const dateFrom = dateFromProj.value;
       const dateTo = dateToProj.value;
 
@@ -268,12 +239,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      saveFilters({ project: { id: projectId, category, dateFrom, dateTo } });
+      saveFilters({ project: { id: projectId, dateFrom, dateTo } });
 
       let url = `/hr/reports/print?type=project&date_from=${dateFrom}&date_to=${dateTo}`;
       if (projectId) url += `&project_id=${projectId}`;
-      if (category) url += `&category=${category}`;
-      window.open(url, '_blank');
+      const printWin = window.open(url, '_blank');
+      if (printWin) { printWin.focus(); }
     });
   }
 

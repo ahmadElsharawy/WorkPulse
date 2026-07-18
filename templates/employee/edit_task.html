@@ -20,7 +20,7 @@
       <label for="project_id" class="form-label">{{ _('projects') }}</label>
       <select class="form-select" id="project_id" name="project_id" required>
         {% for proj in projects %}
-          <option value="{{ proj.id }}" {% if task.project_id == proj.id %}selected{% endif %}>{{ proj.name }}</option>
+          <option value="{{ proj.id }}" {% if task.project_id == proj.id %}selected{% endif %} {% if proj.allocated > 0 and proj.remaining < 0 %}style="color: var(--bs-danger); font-weight: bold;" class="text-danger fw-bold"{% endif %}>{{ proj.name }}</option>
         {% endfor %}
       </select>
     </div>

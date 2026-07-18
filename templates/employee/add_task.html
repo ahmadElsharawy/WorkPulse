@@ -21,7 +21,7 @@
       <select name='project_id' class='form-select' required>
         <option value='' disabled selected>{{ _('select_project') }}...</option>
         {% for proj in projects %}
-          <option value='{{ proj.id }}'>{{ proj.name }}</option>
+          <option value='{{ proj.id }}' {% if proj.allocated > 0 and proj.remaining < 0 %}style="color: var(--bs-danger); font-weight: bold;" class="text-danger fw-bold"{% endif %}>{{ proj.name }}</option>
         {% endfor %}
       </select>
     </div>
