@@ -36,7 +36,7 @@
 
     <div class='row mb-4 g-3'>
       <div class='col-md-6'>
-        <label class='form-label'>{{ 'المدراء الذين يديرون هذا الموظف (اختياري)' if current_lang == 'ar' else 'Managers managing this employee (Optional)' }}</label>
+        <label class='form-label'>{{ 'المدراء المباشرون للموظف (اختياري)' if current_lang == 'ar' else "Employee's Managers (Optional)" }}</label>
         <select name='managers' class='form-select' multiple size='4'>
           {% for emp in employees %}
             <option value='{{ emp.username }}'>{{ emp.full_name }} ({{ emp.username }})</option>
@@ -45,7 +45,7 @@
         <div class='form-text'>{{ 'اضغط مع الاستمرار على Ctrl لتحديد أكثر من مدير' if current_lang == 'ar' else 'Hold Ctrl (Windows) or Cmd (Mac) to select multiple.' }}</div>
       </div>
       <div class='col-md-6'>
-        <label class='form-label'>{{ 'الموظفون الذين يديرهم هذا الموظف (اختياري)' if current_lang == 'ar' else 'Subordinates managed by this employee (Optional)' }}</label>
+        <label class='form-label'>{{ 'الموظفون التابعون للموظف (اختياري)' if current_lang == 'ar' else "Employee's Subordinates (Optional)" }}</label>
         <select name='subordinates' class='form-select' multiple size='4'>
           {% for emp in employees %}
             <option value='{{ emp.username }}'>{{ emp.full_name }} ({{ emp.username }})</option>
