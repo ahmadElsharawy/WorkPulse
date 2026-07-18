@@ -101,7 +101,13 @@ TRANSLATIONS = {
         'not_start': 'Not Started',
         'timesheet_status': 'Timesheet Status',
         'no_pending_approvals': 'No pending approvals.',
-        'comments_optional': 'Comments (Optional)'
+        'comments_optional': 'Comments (Optional)',
+        'residence_permit_end_date': 'Residence Permit End Date',
+        'employee_number': 'Employee Number',
+        'email': 'Email',
+        'phone': 'Phone',
+        'department': 'Department',
+        'hire_date': 'Hire Date'
     },
     'ar': {
         'dashboard': 'لوحة التحكم',
@@ -202,7 +208,13 @@ TRANSLATIONS = {
         'not_start': 'لم تبدأ بعد',
         'timesheet_status': 'حالة الاعتماد',
         'no_pending_approvals': 'لا توجد موافقات معلقة.',
-        'comments_optional': 'ملاحظات (اختياري)'
+        'comments_optional': 'ملاحظات (اختياري)',
+        'residence_permit_end_date': 'تاريخ انتهاء الإقامة',
+        'employee_number': 'الرقم الوظيفي',
+        'email': 'البريد الإلكتروني',
+        'phone': 'رقم الهاتف',
+        'department': 'القسم',
+        'hire_date': 'تاريخ التعيين'
     }
 }
 

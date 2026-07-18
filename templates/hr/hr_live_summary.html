@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'الملخص المباشر لمهام الموظفين' if current_lang == 'ar' else 'All Employee Tasks – Live Summary' }} – WorkPulse{% endblock %}
+{% block content %}
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>📊 {{ 'الملخص المباشر لمهام الموظفين' if current_lang == 'ar' else 'All Employee Tasks – Live Summary' }}</h1>
+    <p class='page-subtitle'>{{ 'متابعة وتصفية الحالة الحية لمهام جميع الموظفين بالشركة' if current_lang == 'ar' else 'Monitor and filter live status of all employees across the organization' }}</p>
+  </div>
+  <div>
+    <a href='{{ url_for("hr_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
+  </div>
+</div>
+
+<!-- Filter Card -->
+<div class='card mb-4 shadow-sm'>
+  <div class='card-header bg-dark d-flex justify-content-between align-items-center text-white'>
+    <span>🔍 {{ _('filter') }}</span>
+    <button class='btn btn-outline-light btn-sm' type='button' data-bs-toggle='collapse' data-bs-target='#summaryFilterCollapse'>
+      {{ 'طي الفلاتر' if current_lang == 'ar' else 'Toggle Filters' }}
+    </button>
+  </div>
+  <div class='collapse show' id='summaryFilterCollapse'>
+    <div class='card-body'>
+      <form method='GET' action='{{ url_for('hr_live_summary') }}'>
+        <input type="hidden" name="filter_applied" value="1">
+        <div class='row g-3'>
+          <!-- Employee Filter -->
+          <div class='col-md-4'>
+            <label class='form-label fw-bold'>{{ _('employees') }}</label>
+            <div class='check-list'>
+              {% for emp in employees_list %}
+                <div class='form-check'>
+                  <input class='form-check-input' type='checkbox' name='sum_employees' value='{{ emp.id }}' id='sum_emp_{{ emp.id }}'
+                    {% if emp.id in selected_sum_employees %}checked{% endif %}>
+                  <label class='form-check-label text-truncate d-block' for='sum_emp_{{ emp.id }}'>{{ emp.full_name }}</label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <!-- Status Filter -->
+          <div class='col-md-3'>
+            <label class='form-label fw-bold'>{{ _('status') }}</label>
+            <div class='check-list'>
+              {% for status_key, status_val in [('Running', _('running')), ('Pause', _('pause')), ('Finish', _('finish')), ('Not Work', 'لا يعمل حالياً' if current_lang == 'ar' else 'Not Work')] %}
+                <div class='form-check'>
+                  <input class='form-check-input' type='checkbox' name='sum_statuses' value='{{ status_key }}' id='sum_status_{{ status_key }}'
+                    {% if status_key in selected_sum_statuses %}checked{% endif %}>
+                  <label class='form-check-label' for='sum_status_{{ status_key }}'>{{ status_val }}</label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <!-- Date Filter -->
+          <div class='col-md-3'>
+            <label class='form-label fw-bold'>{{ _('date') }}</label>
+            <input type='date' class='form-control mb-2' name='summary_created_from' value='{{ request.args.get("summary_created_from", "") }}'>
+            <input type='date' class='form-control' name='summary_created_to' value='{{ request.args.get("summary_created_to", "") }}'>
+          </div>
+          <!-- Actions -->
+          <div class='col-md-2 d-flex align-items-end'>
+            <div class='d-flex flex-column gap-2 w-100'>
+              <button type='submit' class='btn btn-primary w-100'>{{ _('filter') }}</button>
+              <a href='{{ url_for("hr_live_summary") }}?reset=1' class='btn btn-secondary w-100'>{{ 'إعادة تعيين' if current_lang == 'ar' else 'Reset' }}</a>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Summary Table -->
+<div id='summary-wrapper' class='card shadow-sm'>
+  <div class='table-responsive'>
+    <table class='table mb-0 table-sortable' data-sortable>
+      <thead>
+        <tr>
+          <th class='ps-4'>{{ _('full_name') }}</th>
+          <th class='text-center'>{{ _('running') }}</th>
+          <th class='text-center'>{{ _('pause') }}</th>
+          <th class='text-center'>{{ _('finish') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sum in summaries %}
+        <tr>
+          <td class='ps-4'>
+            <a href="{{ url_for('hr_employee_detail', user_id=sum.employee_id) }}" class="fw-bold text-decoration-none">{{ sum.employee_name }}</a>
+          </td>
+          {% if sum.running_cnt == 0 %}
+            <td class='text-center'><span class='badge bg-secondary-subtle text-secondary border px-2 py-1'>{{ 'لا يعمل' if current_lang == 'ar' else 'Not Work' }}</span></td>
+          {% else %}
+            <td class='text-center'><span class='badge badge-running text-white px-2 py-1'>{{ sum.running_cnt }}</span></td>
+          {% endif %}
+          <td class='text-center'><span class='badge badge-pause text-dark px-2 py-1'>{{ sum.pause_cnt }}</span></td>
+          <td class='text-center'><span class='badge badge-finish text-white px-2 py-1'>{{ sum.finish_cnt }}</span></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan='4' class='text-center text-muted py-4'>{{ 'لا توجد بيانات مطابقة.' if current_lang == 'ar' else 'No data matches the selected filters.' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- Pagination controls for HR Live Summary -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-light py-2">
+    <nav class="d-flex justify-content-between align-items-center">
+      <div class="text-muted small">
+        {% if current_lang == 'ar' %}
+          عرض الموظفين من <strong>{{ showing_from }}</strong> إلى <strong>{{ showing_to }}</strong> من إجمالي <strong>{{ total_tasks }}</strong> موظف
+        {% else %}
+          Showing employees <strong>{{ showing_from }}</strong> to <strong>{{ showing_to }}</strong> of <strong>{{ total_tasks }}</strong>
+        {% endif %}
+      </div>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(1) }}">{{ 'الأول' if current_lang == 'ar' else 'First' }}</a>
+        </li>
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(page - 1) }}">{{ 'السابق' if current_lang == 'ar' else 'Previous' }}</a>
+        </li>
+        
+        {% for p in page_range %}
+          {% if p is none %}
+            <li class="page-item disabled">
+              <span class="page-link">...</span>
+            </li>
+          {% else %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link" href="{{ page_url(p) }}">{{ p }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+        
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(page + 1) }}">{{ 'التالي' if current_lang == 'ar' else 'Next' }}</a>
+        </li>
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(total_pages) }}">{{ 'الأخير' if current_lang == 'ar' else 'Last' }}</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function refreshSummaryOnly() {
+    fetch(window.location.href, {cache: 'no-store'})
+      .then(resp => resp.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const summary = doc.getElementById('summary-wrapper');
+        if (summary) document.getElementById('summary-wrapper').innerHTML = summary.innerHTML;
+      })
+      .catch(err => console.error('Refresh error:', err));
+  }
+  setInterval(refreshSummaryOnly, 10000);
+</script>
+{% endblock %}

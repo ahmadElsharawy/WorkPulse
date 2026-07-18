@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from io import BytesIO
 import pandas as pd
 from flask import render_template, request, redirect, url_for, flash, jsonify, send_file
@@ -329,6 +330,7 @@ def register_reports_routes(app):
                             pivot_col_totals[p_id]['has_unlimited'] = True
                             
                 pivot_rows.append({
+                    'employee_id': emp_id,
                     'employee_name': emp_name,
                     'cells': row_cells,
                     'total': {

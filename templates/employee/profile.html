@@ -1,24 +1,22 @@
 {% extends 'base.html' %}
-{% block title %}{{ employee.full_name }} – {{ _('employee_details') }}{% endblock %}
+{% block title %}{{ employee.full_name }} – {{ 'الملف الشخصي' if current_lang == 'ar' else 'My Profile' }}{% endblock %}
 {% block content %}
 <div class='page-header'>
   <div>
-    <h1 class='page-title'>{{ _('employee_details') }}</h1>
-    <p class='page-subtitle'>{{ 'الملف الشخصي وتخصيص ساعات عمل الموظف' if current_lang == 'ar' else 'Profile and project allocations for' }} {{ employee.full_name }}</p>
+    <h1 class='page-title'>{{ 'الملف الشخصي' if current_lang == 'ar' else 'My Profile' }}</h1>
+    <p class='page-subtitle'>{{ 'معلومات الموظف وميزانيات ساعات المشاريع المسندة' if current_lang == 'ar' else 'Your profile metadata and assigned projects hour balances' }}</p>
   </div>
-  <div class='d-flex gap-2'>
-    <a href='{{ url_for("hr_employee_detail_print", user_id=employee.id) }}' target='_blank' class='btn btn-success'>🖨️ {{ _('print_report') }}</a>
-    <a href='{{ url_for("edit_employee", user_id=employee.id) }}' class='btn btn-primary'>{{ _('edit') }}</a>
-    <a href='{{ url_for("hr_employees") }}' class='btn btn-secondary'>← {{ 'الموظفون' if current_lang == 'ar' else 'Employees' }}</a>
+  <div>
+    <a href='{{ url_for("employee_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
   </div>
 </div>
 
 <div class='row g-4'>
   <!-- Profile Info Card -->
   <div class='col-md-4'>
-    <div class='card h-100'>
+    <div class='card h-100 shadow-sm'>
       <div class='card-header bg-dark text-white fw-bold'>
-        {{ 'معلومات الموظف' if current_lang == 'ar' else 'Profile Info' }}
+        {{ 'معلومات الحساب' if current_lang == 'ar' else 'Profile Info' }}
       </div>
       <div class='card-body p-4'>
         <div class='text-center mb-4'>
@@ -27,16 +25,9 @@
           </div>
           <h4 class='mb-1'>{{ employee.full_name }}</h4>
           <span class='badge bg-light text-dark border'>{{ employee.position or ('لا يوجد مسمى' if current_lang == 'ar' else 'No Position') }}</span>
+          <div class='text-muted small mt-2'>@{{ employee.username }}</div>
         </div>
         <hr>
-        <div class='mb-3'>
-          <label class='text-muted small d-block mb-1'>{{ _('username') }}</label>
-          <strong>{{ employee.username }}</strong>
-        </div>
-        <div class='mb-3'>
-          <label class='text-muted small d-block mb-1'>{{ 'الدور في النظام' if current_lang == 'ar' else 'System Role' }}</label>
-          <strong>{{ 'مسؤول' if employee.role == 'HR' and current_lang == 'ar' else employee.role }}</strong>
-        </div>
         {% if employee.email %}
         <div class='mb-3'>
           <label class='text-muted small d-block mb-1'>{{ _('email') }}</label>
@@ -79,23 +70,23 @@
 
   <!-- Assigned Projects & Hour Balances -->
   <div class='col-md-8'>
-    <div class='section-title'>{{ 'المشاريع المسندة ورصيد الساعات' if current_lang == 'ar' else 'Assigned Projects & Hours Balance' }}</div>
-    <div class='card'>
+    <div class='section-title'>💼 {{ 'ميزانيات مشاريعي' if current_lang == 'ar' else 'My Project Hour Balances' }}</div>
+    <div class='card shadow-sm'>
       <div class='table-responsive'>
         <table class='table mb-0 align-middle'>
           <thead>
             <tr>
-              <th class='ps-3'>{{ _('project_name') }}</th>
+              <th class='ps-3'>{{ _('projects') }}</th>
               <th class='text-center'>{{ _('allocated') }}</th>
               <th class='text-center'>{{ _('worked') }}</th>
               <th class='text-end pe-3'>{{ _('remaining') }}</th>
             </tr>
           </thead>
           <tbody>
-            {% for proj in projects %}
+            {% for proj in assigned_project_balances %}
             <tr>
               <td class='ps-3'>
-                <a href="{{ url_for('hr_project_detail', project_id=proj.id) }}" class='fw-bold text-decoration-none'>{{ proj.name }}</a>
+                <strong>{{ proj.name }}</strong>
               </td>
               <td class='text-center'>
                 {% if proj.allocated_hours == 0 %}
@@ -113,7 +104,7 @@
                 {% else %}
                   {% if proj.remaining_hours < 0 %}
                     <span class='badge bg-danger px-2 py-1'>{{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
-                  {% elif proj.remaining_hours < 5 %}
+                  {% elif proj.remaining_hours < (0.2 * proj.allocated_hours) %}
                     <span class='badge bg-warning text-dark px-2 py-1'>{{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
                   {% else %}
                     <span class='badge bg-success px-2 py-1'>{{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
@@ -123,7 +114,7 @@
             </tr>
             {% else %}
             <tr>
-              <td colspan='4' class='text-center text-muted py-4'>{{ 'لا توجد مشاريع مسندة لهذا الموظف حالياً.' if current_lang == 'ar' else 'No projects assigned to this employee.' }}</td>
+              <td colspan='4' class='text-center text-muted py-4'>{{ 'لا توجد مشاريع مسندة.' if current_lang == 'ar' else 'No projects assigned.' }}</td>
             </tr>
             {% endfor %}
           </tbody>

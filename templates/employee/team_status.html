@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'حالة فريق العمل' if current_lang == 'ar' else 'Team Status' }} – WorkPulse{% endblock %}
+{% block content %}
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>📊 {{ 'حالة فريق العمل' if current_lang == 'ar' else 'Team Status' }}</h1>
+    <p class='page-subtitle'>{{ 'متابعة الحالة الحية للموظفين التابعين لإدارتك في مشاريعك المسندة' if current_lang == 'ar' else 'Monitor live status of subordinates under your management in your assigned projects' }}</p>
+  </div>
+  <div>
+    <a href='{{ url_for("employee_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
+  </div>
+</div>
+
+<div class='card shadow-sm'>
+  <div class='table-responsive'>
+    <table class='table mb-0 align-middle'>
+      <thead>
+        <tr>
+          <th class='ps-4'>{{ 'الاسم' if current_lang == 'ar' else 'Name' }}</th>
+          <th class='text-center'>{{ 'حالة العمل الحالية' if current_lang == 'ar' else 'Current Work Status' }}</th>
+          <th class='text-center'>{{ _('running') }}</th>
+          <th class='text-center'>{{ _('pause') }}</th>
+          <th class='text-center'>{{ _('finish') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sum in live_summary %}
+        <tr>
+          <td class='ps-4'>
+            <strong>{{ sum.employee_name }}</strong>
+          </td>
+          <td class='text-center'>
+            {% if sum.global_running_cnt > 0 and sum.running_cnt > 0 %}
+              <span class='badge badge-running text-white px-3 py-2'>🟢 {{ 'يعمل حالياً' if current_lang == 'ar' else 'Active' }}</span>
+            {% elif sum.global_running_cnt > 0 and sum.running_cnt == 0 %}
+              <span class='badge bg-info-subtle text-info border border-info-subtle px-3 py-2'>🔵 {{ 'نشط في مشروع آخر' if current_lang == 'ar' else 'Active in another project' }}</span>
+            {% else %}
+              <span class='badge bg-secondary-subtle text-secondary border px-3 py-2'>⚪ {{ 'لا يعمل' if current_lang == 'ar' else 'Inactive' }}</span>
+            {% endif %}
+          </td>
+          <td class='text-center'>
+            {% if sum.running_cnt > 0 %}
+              <span class='badge badge-running text-white px-2 py-1'>{{ sum.running_cnt }}</span>
+            {% else %}
+              <span class='text-muted'>0</span>
+            {% endif %}
+          </td>
+          <td class='text-center'>
+            {% if sum.pause_cnt > 0 %}
+              <span class='badge badge-pause text-dark px-2 py-1'>{{ sum.pause_cnt }}</span>
+            {% else %}
+              <span class='text-muted'>0</span>
+            {% endif %}
+          </td>
+          <td class='text-center'>
+            {% if sum.finish_cnt > 0 %}
+              <span class='badge badge-finish text-white px-2 py-1'>{{ sum.finish_cnt }}</span>
+            {% else %}
+              <span class='text-muted'>0</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan='5' class='text-muted text-center py-4'>
+            {{ 'لا يوجد موظفون تابعون لإدارتك حالياً لمراقبة حالتهم.' if current_lang == 'ar' else 'No subordinates found under your management to monitor.' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

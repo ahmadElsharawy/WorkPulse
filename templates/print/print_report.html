@@ -137,9 +137,17 @@
             <tr>
                 <td>{{ r.created_at[:10] }}</td>
                 {% if 'employee_name' in r %}
-                <td><strong>{{ r.employee_name }}</strong></td>
+                <td>
+                  <a href="{{ url_for('hr_employee_detail', user_id=r.employee_id) }}" class="fw-bold text-decoration-none text-dark">{{ r.employee_name }}</a>
+                </td>
                 {% endif %}
-                <td><span class="badge bg-light text-dark border">{{ r.project_name or '–' }}</span></td>
+                <td>
+                  {% if r.project_id %}
+                    <a href="{{ url_for('hr_project_detail', project_id=r.project_id) }}" class="badge bg-light text-dark border text-decoration-none">{{ r.project_name }}</a>
+                  {% else %}
+                    <span class="badge bg-light text-dark border">–</span>
+                  {% endif %}
+                </td>
                 <td>{{ r.title }}</td>
 
                 <td style="font-family: monospace;">
@@ -206,7 +214,9 @@
             <tr>
                 <th>{{ 'الموظفون' if current_lang == 'ar' else 'Employees' }}</th>
                 {% for col in pivot_cols %}
-                <th class="text-center">{{ col.name }}</th>
+                <th class="text-center">
+                  <a href="{{ url_for('hr_project_detail', project_id=col.id) }}" class="text-decoration-none text-dark">{{ col.name }}</a>
+                </th>
                 {% endfor %}
                 <th class="text-end">{{ 'الإجمالي' if current_lang == 'ar' else 'Total' }}</th>
             </tr>
@@ -214,7 +224,9 @@
         <tbody>
             {% for row in pivot_rows %}
             <tr>
-                <td><strong>{{ row.employee_name }}</strong></td>
+                <td>
+                  <a href="{{ url_for('hr_employee_detail', user_id=row.employee_id) }}" class="fw-bold text-decoration-none text-dark">{{ row.employee_name }}</a>
+                </td>
                 {% for col in pivot_cols %}
                     {% set cell = row.cells.get(col.id) %}
                     <td class="text-center">

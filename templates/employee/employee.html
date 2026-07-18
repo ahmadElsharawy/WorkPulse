@@ -136,7 +136,7 @@
 </div>
 
 <div class='row g-4'>
-  <div class='col-lg-9 col-md-8'>
+  <div class='col-12'>
     <!-- ── My Tasks Table ── -->
     <div class='card shadow-sm mb-5'>
       <div class='card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center'>
@@ -231,114 +231,52 @@
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
-
-  <div class='col-lg-3 col-md-4'>
-    <!-- ── My Project Hour Balances ── -->
-    <div class='card mb-4 shadow-sm'>
-      <div class='card-header bg-dark text-white fw-bold'>
-        💼 {{ 'ميزانيات مشاريعي' if current_lang == 'ar' else 'My Project Hour Balances' }}
-      </div>
-      <div class='card-body p-0'>
-        <div class='table-responsive'>
-          <table class='table table-sm align-middle mb-0' style='font-size:0.9rem;'>
-            <thead>
-              <tr class='table-light'>
-                <th class='ps-3'>{{ _('projects') }}</th>
-                <th class='text-end pe-3'>{{ _('remaining') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for proj in assigned_project_balances %}
-              <tr>
-                <td class='ps-3 text-truncate' style='max-width: 130px;' title='{{ proj.name }}'>
-                  <strong>{{ proj.name }}</strong>
-                </td>
-                <td class='text-end pe-3'>
-                  {% if proj.allocated_hours == 0 %}
-                    <span class='badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1'>{{ _('unlimited') }}</span>
-                  {% else %}
-                    {% if proj.remaining_hours < 0 %}
-                      <span class='badge bg-danger px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>
-                        {{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
-                        <span class='d-block' style='font-size:0.7rem;font-weight:normal;'>⚠️ {{ _('over_budget') }}</span>
-                      </span>
-                    {% elif proj.remaining_hours < (0.2 * proj.allocated_hours) %}
-                      <span class='badge bg-warning text-dark px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>
-                        {{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
-                        <span class='d-block' style='font-size:0.7rem;font-weight:normal;'>⚠️ {{ _('near_limit') }}</span>
-                      </span>
-                    {% else %}
-                      <span class='badge bg-success px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
-                    {% endif %}
-                  {% endif %}
-                </td>
-              </tr>
-              {% endfor %}
-              {% if not assigned_project_balances %}
-              <tr>
-                <td colspan='2' class='text-muted text-center py-3'>{{ 'لا توجد مشاريع مسندة.' if current_lang == 'ar' else 'No projects assigned.' }}</td>
-              </tr>
+      <!-- Pagination controls for My Tasks -->
+      {% if total_pages > 1 %}
+      <div class="card-footer bg-light py-2">
+        <nav class="d-flex justify-content-between align-items-center">
+          <div class="text-muted small">
+            {% if current_lang == 'ar' %}
+              عرض المهام من <strong>{{ showing_from }}</strong> إلى <strong>{{ showing_to }}</strong> من إجمالي <strong>{{ total_tasks }}</strong> مهمة
+            {% else %}
+              Showing tasks <strong>{{ showing_from }}</strong> to <strong>{{ showing_to }}</strong> of <strong>{{ total_tasks }}</strong>
+            {% endif %}
+          </div>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if page == 1 %}disabled{% endif %}">
+              <a class="page-link" href="{{ page_url(1) }}">{{ 'الأول' if current_lang == 'ar' else 'First' }}</a>
+            </li>
+            <li class="page-item {% if page == 1 %}disabled{% endif %}">
+              <a class="page-link" href="{{ page_url(page - 1) }}">{{ 'السابق' if current_lang == 'ar' else 'Previous' }}</a>
+            </li>
+            
+            {% for p in page_range %}
+              {% if p is none %}
+                <li class="page-item disabled">
+                  <span class="page-link">...</span>
+                </li>
+              {% else %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                  <a class="page-link" href="{{ page_url(p) }}">{{ p }}</a>
+                </li>
               {% endif %}
-            </tbody>
-          </table>
-        </div>
+            {% endfor %}
+            
+            <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+              <a class="page-link" href="{{ page_url(page + 1) }}">{{ 'التالي' if current_lang == 'ar' else 'Next' }}</a>
+            </li>
+            <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+              <a class="page-link" href="{{ page_url(total_pages) }}">{{ 'الأخير' if current_lang == 'ar' else 'Last' }}</a>
+            </li>
+          </ul>
+        </nav>
       </div>
+      {% endif %}
     </div>
   </div>
 </div>
 
 <!-- ── Pending Approvals Section for Subordinates (Manager View) ── -->
-{% if subordinates and pending_sub_approvals %}
-<div class='section-title mt-4 mb-3 text-warning fw-bold'>⏳ {{ 'مهام معلقة للموافقة عليها' if current_lang == 'ar' else 'Pending Subordinate Timesheets' }} ({{ pending_sub_approvals|length }})</div>
-<div class='card shadow-sm mb-5 border-warning'>
-  <div class='table-responsive'>
-    <table class='table mb-0 align-middle'>
-      <thead>
-        <tr class='table-warning'>
-          <th>{{ _('employees') }}</th>
-          <th>{{ _('task_title') }}</th>
-          <th>{{ _('projects') }}</th>
-          <th>{{ _('duration') }}</th>
-          <th class='text-center'>{{ _('actions') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for task in pending_sub_approvals %}
-        <tr>
-          <td><strong>{{ task.employee_name }}</strong></td>
-          <td>
-            <strong>{{ task.title }}</strong>
-
-          </td>
-          <td><span class='badge bg-info-subtle text-info border border-info-subtle'>{{ task.project_name or '–' }}</span></td>
-          <td style='font-family:monospace;'>{{ task|format_duration }}</td>
-          <td class='text-center'>
-            <div class='d-flex justify-content-center align-items-center gap-2'>
-              <!-- Approve form -->
-              <form action='{{ url_for("approve_task", task_id=task.id) }}' method='post'>
-                <button type='submit' class='btn btn-success btn-sm'>✅ {{ _('approve') }}</button>
-              </form>
-              <!-- Reject Form Button and Collapse input -->
-              <button class='btn btn-danger btn-sm' type='button' data-bs-toggle='collapse' data-bs-target='#rejectCollapse{{ task.id }}'>
-                ❌ {{ _('reject') }}
-              </button>
-            </div>
-            <div class='collapse mt-2' id='rejectCollapse{{ task.id }}'>
-              <form action='{{ url_for("reject_task", task_id=task.id) }}' method='post' class='p-2 bg-light border rounded'>
-                <input type='text' name='comments' class='form-control form-control-sm mb-1' placeholder='{{ _('comments_optional') }}' required>
-                <button type='submit' class='btn btn-danger btn-sm w-100'>{{ 'تأكيد الرفض' if current_lang == 'ar' else 'Confirm Reject' }}</button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
 
 {% if subordinates %}
 <!-- ── Subordinate Tasks Live Tracking ── -->
@@ -513,6 +451,47 @@
         </tbody>
       </table>
     </div>
+    <!-- Pagination controls for Subordinate Tasks -->
+    {% if sub_total_pages > 1 %}
+    <div class="card-footer bg-light py-2">
+      <nav class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+          {% if current_lang == 'ar' %}
+            عرض المهام من <strong>{{ sub_showing_from }}</strong> إلى <strong>{{ sub_showing_to }}</strong> من إجمالي <strong>{{ total_sub_tasks }}</strong> مهمة
+          {% else %}
+            Showing tasks <strong>{{ sub_showing_from }}</strong> to <strong>{{ sub_showing_to }}</strong> of <strong>{{ total_sub_tasks }}</strong>
+          {% endif %}
+        </div>
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item {% if sub_page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(1) }}">{{ 'الأول' if current_lang == 'ar' else 'First' }}</a>
+          </li>
+          <li class="page-item {% if sub_page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(sub_page - 1) }}">{{ 'السابق' if current_lang == 'ar' else 'Previous' }}</a>
+          </li>
+          
+          {% for p in sub_page_range %}
+            {% if p is none %}
+              <li class="page-item disabled">
+                <span class="page-link">...</span>
+              </li>
+            {% else %}
+              <li class="page-item {% if p == sub_page %}active{% endif %}">
+                <a class="page-link" href="{{ sub_page_url(p) }}">{{ p }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+          
+          <li class="page-item {% if sub_page == sub_total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(sub_page + 1) }}">{{ 'التالي' if current_lang == 'ar' else 'Next' }}</a>
+          </li>
+          <li class="page-item {% if sub_page == sub_total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(sub_total_pages) }}">{{ 'الأخير' if current_lang == 'ar' else 'Last' }}</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
   </div>
   {% else %}
     <div class='card shadow-sm mb-5'>

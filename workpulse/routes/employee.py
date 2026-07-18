@@ -1,6 +1,6 @@
 import urllib.parse
 from datetime import datetime, timedelta
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from workpulse.decorators import role_required
 from workpulse.database import get_db, get_user_preferences, save_user_preferences
@@ -118,6 +118,43 @@ def register_employee_routes(app):
             
         query += " ORDER BY t.created_at DESC"
         tasks = db.execute(query, params).fetchall()
+
+        def get_pagination_range(curr, total):
+            if total <= 7:
+                return list(range(1, total + 1))
+            res = []
+            if curr <= 4:
+                res.extend([1, 2, 3, 4])
+                res.append(None)
+                res.append(total)
+            elif curr >= total - 3:
+                res.append(1)
+                res.append(None)
+                res.extend(range(total - 3, total + 1))
+            else:
+                res.append(1)
+                res.append(None)
+                res.extend([curr - 1, curr, curr + 1])
+                res.append(None)
+                res.append(total)
+            return res
+
+        # Paginate my tasks
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        total_tasks = len(tasks)
+        total_pages = (total_tasks + per_page - 1) // per_page
+        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
+        offset = (page - 1) * per_page
+        paginated_tasks = tasks[offset:offset+per_page]
+        page_range = get_pagination_range(page, total_pages)
+        showing_from = offset + 1 if total_tasks > 0 else 0
+        showing_to = min(offset + per_page, total_tasks)
+
+        def page_url(p):
+            args = request.args.to_dict(flat=False)
+            args['page'] = [str(p)]
+            return url_for('employee_dashboard') + '?' + urllib.parse.urlencode(args, doseq=True)
         
         subordinates = db.execute('''
             SELECT u.* FROM users u
@@ -187,6 +224,23 @@ def register_employee_routes(app):
             
         sub_query += " ORDER BY t.created_at DESC"
         subordinate_tasks = db.execute(sub_query, sub_params).fetchall()
+
+        # Paginate subordinate tasks
+        sub_page = request.args.get('sub_page', 1, type=int)
+        sub_per_page = 20
+        total_sub_tasks = len(subordinate_tasks)
+        sub_total_pages = (total_sub_tasks + sub_per_page - 1) // sub_per_page
+        sub_page = max(1, min(sub_page, sub_total_pages)) if sub_total_pages > 0 else 1
+        sub_offset = (sub_page - 1) * sub_per_page
+        paginated_subordinate_tasks = subordinate_tasks[sub_offset:sub_offset+sub_per_page]
+        sub_page_range = get_pagination_range(sub_page, sub_total_pages)
+        sub_showing_from = sub_offset + 1 if total_sub_tasks > 0 else 0
+        sub_showing_to = min(sub_offset + sub_per_page, total_sub_tasks)
+
+        def sub_page_url(p):
+            args = request.args.to_dict(flat=False)
+            args['sub_page'] = [str(p)]
+            return url_for('employee_dashboard') + '?' + urllib.parse.urlencode(args, doseq=True)
         
         projects_list = db.execute('''
             SELECT p.id, p.name FROM projects p
@@ -273,9 +327,9 @@ def register_employee_routes(app):
         
         return render_template(
             'employee/employee.html', 
-            tasks=tasks, 
+            tasks=paginated_tasks, 
             subordinates=subordinates, 
-            subordinate_tasks=subordinate_tasks,
+            subordinate_tasks=paginated_subordinate_tasks,
             projects_list=projects_list,
             creators_list=creators_list,
             selected_projects=selected_projects,
@@ -297,7 +351,23 @@ def register_employee_routes(app):
             chart_weekly_labels=chart_weekly_labels,
             chart_weekly_data=chart_weekly_data,
             pending_sub_approvals=pending_sub_approvals,
-            my_managers=my_managers
+            my_managers=my_managers,
+            
+            page=page,
+            total_pages=total_pages,
+            page_range=page_range,
+            page_url=page_url,
+            showing_from=showing_from,
+            showing_to=showing_to,
+            total_tasks=total_tasks,
+            
+            sub_page=sub_page,
+            sub_total_pages=sub_total_pages,
+            sub_page_range=sub_page_range,
+            sub_page_url=sub_page_url,
+            sub_showing_from=sub_showing_from,
+            sub_showing_to=sub_showing_to,
+            total_sub_tasks=total_sub_tasks
         )
 
     @app.route('/employee/add', methods=['GET', 'POST'])
@@ -671,3 +741,74 @@ def register_employee_routes(app):
         db.commit()
         flash('Task timesheet rejected.', 'warning')
         return redirect(request.referrer or url_for('index'))
+
+    @app.route('/profile')
+    @login_required
+    def profile():
+        db = get_db()
+        employee = db.execute('SELECT * FROM users WHERE id = ?', (current_user.id,)).fetchone()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('index'))
+            
+        balance_rows = db.execute('''
+            SELECT p.id, p.name, ep.allocated_hours,
+                   COALESCE(SUM(t.running_duration), 0) AS worked_seconds
+            FROM projects p
+            JOIN employee_projects ep ON p.id = ep.project_id
+            LEFT JOIN tasks t ON p.id = t.project_id AND t.employee_id = ep.employee_id
+            WHERE ep.employee_id = ?
+            GROUP BY p.id
+            ORDER BY p.name
+        ''', (current_user.id,)).fetchall()
+        
+        assigned_project_balances = []
+        for r in balance_rows:
+            allocated = r['allocated_hours']
+            worked_hours = r['worked_seconds'] / 3600.0
+            remaining_hours = allocated - worked_hours if allocated > 0 else 0
+            assigned_project_balances.append({
+                'id': r['id'],
+                'name': r['name'],
+                'allocated_hours': allocated,
+                'worked_hours': worked_hours,
+                'remaining_hours': remaining_hours
+            })
+            
+        return render_template('employee/profile.html', employee=employee, assigned_project_balances=assigned_project_balances)
+
+    @app.route('/employee/team-status')
+    @role_required('Employee')
+    def team_status():
+        db = get_db()
+        summary_query = '''
+            SELECT u.id, u.full_name AS employee_name,
+                SUM(CASE WHEN t.status = 'Running' THEN 1 ELSE 0 END) AS running_cnt,
+                SUM(CASE WHEN t.status = 'Pause' THEN 1 ELSE 0 END) AS pause_cnt,
+                SUM(CASE WHEN t.status = 'Finish' THEN 1 ELSE 0 END) AS finish_cnt,
+                (SELECT COUNT(*) FROM tasks t2 WHERE t2.employee_id = u.id AND t2.status = 'Running') AS global_running_cnt
+            FROM users u
+            JOIN employee_managers em ON u.id = em.employee_id
+            LEFT JOIN tasks t ON u.id = t.employee_id AND t.project_id IN (
+                SELECT project_id FROM employee_projects WHERE employee_id = ?
+            )
+            WHERE em.manager_id = ? AND u.role = 'Employee'
+            GROUP BY u.id
+            ORDER BY u.full_name
+        '''
+        live_summary = db.execute(summary_query, (current_user.id, current_user.id)).fetchall()
+        return render_template('employee/team_status.html', live_summary=live_summary)
+
+    @app.route('/employee/pending-approvals')
+    @role_required('Employee')
+    def pending_approvals():
+        db = get_db()
+        pending_sub_approvals = db.execute('''
+            SELECT t.*, u.full_name AS employee_name, p.name AS project_name
+            FROM tasks t
+            JOIN users u ON t.employee_id = u.id
+            LEFT JOIN projects p ON t.project_id = p.id
+            WHERE t.approver_id = ? AND t.approval_status = 'Submitted'
+            ORDER BY t.created_at DESC
+        ''', (current_user.id,)).fetchall()
+        return render_template('employee/pending_approvals.html', pending_sub_approvals=pending_sub_approvals)

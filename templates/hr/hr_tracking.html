@@ -140,10 +140,12 @@
       <tbody>
         {% for task in tasks %}
         <tr>
-          <td class='ps-3'><strong>{{ task.employee_name }}</strong></td>
+          <td class='ps-3'>
+            <a href="{{ url_for('hr_employee_detail', user_id=task.employee_id) }}" class="fw-bold text-decoration-none">{{ task.employee_name }}</a>
+          </td>
           <td>
             {% if task.project_name %}
-              <span class='badge bg-info-subtle text-info border border-info-subtle'>{{ task.project_name }}</span>
+              <a href="{{ url_for('hr_project_detail', project_id=task.project_id) }}" class="badge bg-info-subtle text-info border border-info-subtle text-decoration-none">{{ task.project_name }}</a>
             {% else %}
               <span class='text-muted'>–</span>
             {% endif %}
@@ -200,9 +202,15 @@
     </li>
     
     {% for p in page_range %}
-      <li class="page-item {% if p == page %}active{% endif %}">
-        <a class="page-link" href="{{ page_url(p) }}">{{ p }}</a>
-      </li>
+      {% if p is none %}
+        <li class="page-item disabled">
+          <span class="page-link">...</span>
+        </li>
+      {% else %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="{{ page_url(p) }}">{{ p }}</a>
+        </li>
+      {% endif %}
     {% endfor %}
     
     <li class="page-item {% if page == total_pages %}disabled{% endif %}">

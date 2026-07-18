@@ -13,91 +13,7 @@ def register_hr_routes(app):
     def hr_dashboard():
         db = get_db()
         
-        if 'reset' in request.args:
-            save_user_preferences(current_user.id, filters={'hr_dashboard': {}})
-            return redirect(url_for('hr_dashboard'))
-            
-        if 'filter_applied' in request.args:
-            new_filters = {
-                'sum_employees': request.args.getlist('sum_employees'),
-                'sum_statuses': request.args.getlist('sum_statuses'),
-                'summary_created_from': request.args.get('summary_created_from', ''),
-                'summary_created_to': request.args.get('summary_created_to', '')
-            }
-            save_user_preferences(current_user.id, filters={'hr_dashboard': new_filters})
-        else:
-            pref = get_user_preferences(current_user.id)
-            saved = pref.get('filters', {}).get('hr_dashboard', {})
-            if saved:
-                params = []
-                for k, v in saved.items():
-                    if isinstance(v, list):
-                        for item in v:
-                            params.append((k, item))
-                    else:
-                        if v:
-                            params.append((k, v))
-                if params:
-                    params.append(('filter_applied', '1'))
-                    return redirect(url_for('hr_dashboard') + '?' + urllib.parse.urlencode(params))
-                    
         total_employees = db.execute("SELECT COUNT(*) FROM users WHERE role = 'Employee'").fetchone()[0]
-        selected_sum_employees = [int(x) for x in request.args.getlist('sum_employees') if x.isdigit()]
-        selected_sum_statuses = request.args.getlist('sum_statuses')
-        
-        summary_query = '''
-            SELECT u.id, u.full_name AS employee_name,
-                SUM(CASE WHEN t.status = 'Running' THEN 1 ELSE 0 END) AS running_cnt,
-                SUM(CASE WHEN t.status = 'Pause' THEN 1 ELSE 0 END) AS pause_cnt,
-                SUM(CASE WHEN t.status = 'Finish' THEN 1 ELSE 0 END) AS finish_cnt
-            FROM users u
-            LEFT JOIN tasks t ON u.id = t.employee_id
-            WHERE u.role = 'Employee'
-        '''
-        summary_params = []
-        if selected_sum_employees:
-            placeholders = ','.join('?' for _ in selected_sum_employees)
-            summary_query += f" AND u.id IN ({placeholders})"
-            summary_params.extend(selected_sum_employees)
-            
-        created_from = request.args.get('summary_created_from', '').strip()
-        created_to = request.args.get('summary_created_to', '').strip()
-        if created_from:
-            summary_query += " AND t.created_at >= ?"
-            summary_params.append(f"{created_from} 00:00")
-        if created_to:
-            summary_query += " AND t.created_at <= ?"
-            summary_params.append(f"{created_to} 23:59")
-        summary_query += " GROUP BY u.id"
-        employee_summaries = db.execute(summary_query, summary_params).fetchall()
-        
-        summaries = []
-        for row in employee_summaries:
-            total = (row['running_cnt'] or 0) + (row['pause_cnt'] or 0) + (row['finish_cnt'] or 0)
-            include = True
-            if selected_sum_statuses:
-                status_match = False
-                for status in selected_sum_statuses:
-                    if status == 'Running' and (row['running_cnt'] or 0) > 0:
-                        status_match = True
-                    if status == 'Pause' and (row['pause_cnt'] or 0) > 0:
-                        status_match = True
-                    if status == 'Finish' and (row['finish_cnt'] or 0) > 0:
-                        status_match = True
-                    if status == 'Not Work' and (row['running_cnt'] or 0) == 0:
-                        status_match = True
-                include = status_match
-            if include:
-                summaries.append({
-                    'employee_id': row['id'],
-                    'employee_name': row['employee_name'],
-                    'running_cnt': row['running_cnt'] or 0,
-                    'pause_cnt': row['pause_cnt'] or 0,
-                    'finish_cnt': row['finish_cnt'] or 0,
-                    'total': total
-                })
-                
-        employees_list = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
         total_projects = db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
         active_tasks = db.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Running'").fetchone()[0]
         
@@ -124,55 +40,15 @@ def register_hr_routes(app):
         hr_chart_employees_labels = [r['full_name'] for r in top_emp]
         hr_chart_employees_data = [round(r['total_duration'] / 3600.0, 2) for r in top_emp]
         
-        pending_approvals_raw = db.execute('''
-            SELECT t.*, u.full_name AS employee_name, p.name AS project_name, approver.full_name AS approver_name
-            FROM tasks t
-            JOIN users u ON t.employee_id = u.id
-            LEFT JOIN projects p ON t.project_id = p.id
-            LEFT JOIN users approver ON t.approver_id = approver.id
-            WHERE t.approval_status = 'Submitted' AND t.approver_id IS NOT NULL
-            ORDER BY t.created_at DESC
-        ''').fetchall()
-        
-        pending_approvals = []
-        for row in pending_approvals_raw:
-            task_dict = dict(row)
-            try:
-                created_dt = None
-                try:
-                    created_dt = datetime.strptime(row['created_at'], '%Y-%m-%d %H:%M:%S')
-                except ValueError:
-                    created_dt = datetime.strptime(row['created_at'], '%Y-%m-%d %H:%M')
-                
-                delta = datetime.now() - created_dt
-                if delta.days > 0:
-                    pending_since = f"{delta.days}d" if session.get('lang') != 'ar' else f"منذ {delta.days} يوم"
-                else:
-                    hours = delta.seconds // 3600
-                    minutes = (delta.seconds % 3600) // 60
-                    if hours > 0:
-                        pending_since = f"{hours}h {minutes}m" if session.get('lang') != 'ar' else f"منذ {hours} ساعة و {minutes} د"
-                    else:
-                        pending_since = f"{minutes}m" if session.get('lang') != 'ar' else f"منذ {minutes} د"
-            except Exception:
-                pending_since = "–"
-            task_dict['pending_since'] = pending_since
-            pending_approvals.append(task_dict)
-            
         return render_template(
             'hr/hr.html',
             total_employees=total_employees,
             total_projects=total_projects,
             active_tasks=active_tasks,
-            summaries=summaries,
-            employees_list=employees_list,
-            selected_sum_employees=selected_sum_employees,
-            selected_sum_statuses=selected_sum_statuses,
             hr_chart_projects_labels=hr_chart_projects_labels,
             hr_chart_projects_data=hr_chart_projects_data,
             hr_chart_employees_labels=hr_chart_employees_labels,
-            hr_chart_employees_data=hr_chart_employees_data,
-            pending_approvals=pending_approvals
+            hr_chart_employees_data=hr_chart_employees_data
         )
 
     @app.route('/hr/employees')
@@ -296,6 +172,11 @@ def register_hr_routes(app):
             
         return render_template('print/print_employee_detail.html', employee=employee, projects=project_details, generated_by=current_user.full_name or current_user.username, generated_on=datetime.now().strftime('%Y-%m-%d %H:%M'))
 
+    @app.route('/api/v1/employees/<int:user_id>/pdf')
+    @role_required('HR')
+    def api_download_employee_pdf(user_id):
+        return redirect(url_for('hr_employee_detail_print', user_id=user_id))
+
     @app.route('/hr/projects/<int:project_id>/print')
     @role_required('HR')
     def hr_project_detail_print(project_id):
@@ -404,6 +285,12 @@ def register_hr_routes(app):
             username = request.form['username']
             password = request.form['password']
             position = request.form.get('position', '')
+            email = request.form.get('email', '')
+            phone = request.form.get('phone', '')
+            employee_number = request.form.get('employee_number', '')
+            department = request.form.get('department', '')
+            residence_permit_end_date = request.form.get('residence_permit_end_date', '')
+            hire_date = request.form.get('hire_date', '')
             manager_usernames = request.form.getlist('managers')
             subordinate_usernames = request.form.getlist('subordinates')
             project_ids = request.form.getlist('projects')
@@ -411,8 +298,8 @@ def register_hr_routes(app):
             pwd_hash = bcrypt.generate_password_hash(password).decode('utf-8')
             
             try:
-                db.execute('INSERT INTO users (full_name, username, password_hash, role, position) VALUES (?,?,?,?,?)',
-                           (full_name, username, pwd_hash, role, position))
+                db.execute('INSERT INTO users (full_name, username, password_hash, role, position, email, phone, employee_number, department, residence_permit_end_date, hire_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                           (full_name, username, pwd_hash, role, position, email, phone, employee_number, department, residence_permit_end_date, hire_date))
                 db.commit()
                 
                 employee_row = db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
@@ -459,6 +346,12 @@ def register_hr_routes(app):
             username = request.form['username']
             position = request.form.get('position', '')
             password = request.form.get('password', '').strip()
+            email = request.form.get('email', '')
+            phone = request.form.get('phone', '')
+            employee_number = request.form.get('employee_number', '')
+            department = request.form.get('department', '')
+            residence_permit_end_date = request.form.get('residence_permit_end_date', '')
+            hire_date = request.form.get('hire_date', '')
             manager_usernames = request.form.getlist('managers')
             subordinate_usernames = request.form.getlist('subordinates')
             project_ids = request.form.getlist('projects')
@@ -466,11 +359,11 @@ def register_hr_routes(app):
             try:
                 if password:
                     pwd_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-                    db.execute('UPDATE users SET full_name = ?, username = ?, password_hash = ?, position = ? WHERE id = ?',
-                               (full_name, username, pwd_hash, position, user_id))
+                    db.execute('UPDATE users SET full_name = ?, username = ?, password_hash = ?, position = ?, email = ?, phone = ?, employee_number = ?, department = ?, residence_permit_end_date = ?, hire_date = ? WHERE id = ?',
+                               (full_name, username, pwd_hash, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, user_id))
                 else:
-                    db.execute('UPDATE users SET full_name = ?, username = ?, position = ? WHERE id = ?',
-                               (full_name, username, position, user_id))
+                    db.execute('UPDATE users SET full_name = ?, username = ?, position = ?, email = ?, phone = ?, employee_number = ?, department = ?, residence_permit_end_date = ?, hire_date = ? WHERE id = ?',
+                               (full_name, username, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, user_id))
                 db.commit()
                 
                 manager_ids = []
@@ -644,8 +537,57 @@ def register_hr_routes(app):
             params.extend(selected_creators)
             
         query += " ORDER BY t.created_at DESC"
-        tasks = db.execute(query, params).fetchall()
+        all_tasks = db.execute(query, params).fetchall()
         
+        # Pagination setup
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        total_tasks = len(all_tasks)
+        total_pages = max(1, (total_tasks + per_page - 1) // per_page)
+        
+        if page < 1:
+            page = 1
+        elif page > total_pages:
+            page = total_pages
+            
+        offset = (page - 1) * per_page
+        tasks = all_tasks[offset:offset + per_page]
+        
+        showing_from = offset + 1 if total_tasks > 0 else 0
+        showing_to = min(offset + per_page, total_tasks)
+        # Smart ellipsis page range
+        if total_pages <= 7:
+            page_range = list(range(1, total_pages + 1))
+        else:
+            page_range = []
+            page_range.append(1)
+            
+            if page > 3:
+                page_range.append(None)
+                
+            start = max(2, page - 1)
+            end = min(total_pages - 1, page + 1)
+            
+            if page <= 3:
+                end = 4
+            elif page >= total_pages - 2:
+                start = total_pages - 3
+                
+            for p in range(start, end + 1):
+                if p not in page_range:
+                    page_range.append(p)
+                    
+            if page < total_pages - 2:
+                page_range.append(None)
+                
+            if total_pages not in page_range:
+                page_range.append(total_pages)
+        
+        def page_url(p):
+            args = request.args.to_dict(flat=False)
+            args['page'] = [str(p)]
+            return url_for('hr_tracking') + '?' + urllib.parse.urlencode(args, doseq=True)
+            
         employees_list = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
         projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
         creators_list = db.execute("SELECT id, full_name, username FROM users ORDER BY full_name").fetchall()
@@ -661,7 +603,14 @@ def register_hr_routes(app):
             selected_statuses=selected_statuses,
             created_from=created_from,
             created_to=created_to,
-            selected_creators=selected_creators
+            selected_creators=selected_creators,
+            page=page,
+            total_pages=total_pages,
+            total_tasks=total_tasks,
+            showing_from=showing_from,
+            showing_to=showing_to,
+            page_range=page_range,
+            page_url=page_url
         )
 
     @app.route('/hr/seed', methods=['POST'])
@@ -670,3 +619,240 @@ def register_hr_routes(app):
         res = seed_mock_data()
         flash(f"Mock data seeded! Created {res['projects']} projects, {res['employees']} employees, and generated {res['tasks_generated']} tasks.", "success")
         return redirect(url_for('hr_dashboard'))
+
+    @app.route('/hr/live-summary')
+    @role_required('HR')
+    def hr_live_summary():
+        db = get_db()
+        if request.args.get('reset') == '1':
+            from ..database import save_user_preferences
+            save_user_preferences(current_user.id, filters={'hr_live_summary': {}})
+            return redirect(url_for('hr_live_summary'))
+            
+        # check filters
+        if request.method == 'GET' and not request.args.get('reset'):
+            if request.args.get('filter_applied') == '1':
+                new_filters = {
+                    'sum_employees': request.args.getlist('sum_employees'),
+                    'sum_statuses': request.args.getlist('sum_statuses'),
+                    'summary_created_from': request.args.get('summary_created_from', ''),
+                    'summary_created_to': request.args.get('summary_created_to', '')
+                }
+                from ..database import save_user_preferences
+                save_user_preferences(current_user.id, filters={'hr_live_summary': new_filters})
+            else:
+                from ..database import get_user_preferences
+                pref = get_user_preferences(current_user.id)
+                saved = pref.get('filters', {}).get('hr_live_summary', {})
+                if saved:
+                    params = []
+                    for k, v in saved.items():
+                        if isinstance(v, list):
+                            for item in v:
+                                params.append((k, item))
+                        else:
+                            if v:
+                                params.append((k, v))
+                    if params:
+                        params.append(('filter_applied', '1'))
+                        return redirect(url_for('hr_live_summary') + '?' + urllib.parse.urlencode(params))
+
+        selected_sum_employees = [int(x) for x in request.args.getlist('sum_employees') if x.isdigit()]
+        selected_sum_statuses = request.args.getlist('sum_statuses')
+        
+        summary_query = '''
+            SELECT u.id, u.full_name AS employee_name,
+                SUM(CASE WHEN t.status = 'Running' THEN 1 ELSE 0 END) AS running_cnt,
+                SUM(CASE WHEN t.status = 'Pause' THEN 1 ELSE 0 END) AS pause_cnt,
+                SUM(CASE WHEN t.status = 'Finish' THEN 1 ELSE 0 END) AS finish_cnt
+            FROM users u
+            LEFT JOIN tasks t ON u.id = t.employee_id
+            WHERE u.role = 'Employee'
+        '''
+        summary_params = []
+        if selected_sum_employees:
+            placeholders = ','.join('?' for _ in selected_sum_employees)
+            summary_query += f" AND u.id IN ({placeholders})"
+            summary_params.extend(selected_sum_employees)
+            
+        created_from = request.args.get('summary_created_from', '').strip()
+        created_to = request.args.get('summary_created_to', '').strip()
+        if created_from:
+            summary_query += " AND t.created_at >= ?"
+            summary_params.append(f"{created_from} 00:00")
+        if created_to:
+            summary_query += " AND t.created_at <= ?"
+            summary_params.append(f"{created_to} 23:59")
+        summary_query += " GROUP BY u.id"
+        employee_summaries = db.execute(summary_query, summary_params).fetchall()
+        
+        summaries = []
+        for row in employee_summaries:
+            total = (row['running_cnt'] or 0) + (row['pause_cnt'] or 0) + (row['finish_cnt'] or 0)
+            include = True
+            if selected_sum_statuses:
+                status_match = False
+                for status in selected_sum_statuses:
+                    if status == 'Running' and (row['running_cnt'] or 0) > 0:
+                        status_match = True
+                    if status == 'Pause' and (row['pause_cnt'] or 0) > 0:
+                        status_match = True
+                    if status == 'Finish' and (row['finish_cnt'] or 0) > 0:
+                        status_match = True
+                    if status == 'Not Work' and (row['running_cnt'] or 0) == 0:
+                        status_match = True
+                include = status_match
+            if include:
+                summaries.append({
+                    'employee_id': row['id'],
+                    'employee_name': row['employee_name'],
+                    'running_cnt': row['running_cnt'] or 0,
+                    'pause_cnt': row['pause_cnt'] or 0,
+                    'finish_cnt': row['finish_cnt'] or 0,
+                    'total': total
+                })
+                
+        # Paginate summaries
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        total_items = len(summaries)
+        total_pages = (total_items + per_page - 1) // per_page
+        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
+        offset = (page - 1) * per_page
+        paginated_summaries = summaries[offset:offset+per_page]
+        
+        # Helper to generate page ranges
+        def get_pagination_range(curr, total):
+            if total <= 7:
+                return list(range(1, total + 1))
+            res = []
+            if curr <= 4:
+                res.extend([1, 2, 3, 4])
+                res.append(None)
+                res.append(total)
+            elif curr >= total - 3:
+                res.append(1)
+                res.append(None)
+                res.extend(range(total - 3, total + 1))
+            else:
+                res.append(1)
+                res.append(None)
+                res.extend([curr - 1, curr, curr + 1])
+                res.append(None)
+                res.append(total)
+            return res
+            
+        page_range = get_pagination_range(page, total_pages)
+        showing_from = offset + 1 if total_items > 0 else 0
+        showing_to = min(offset + per_page, total_items)
+        
+        def page_url(p):
+            args = request.args.to_dict(flat=False)
+            args['page'] = [str(p)]
+            return url_for('hr_live_summary') + '?' + urllib.parse.urlencode(args, doseq=True)
+
+        employees_list = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
+        return render_template(
+            'hr/hr_live_summary.html',
+            summaries=paginated_summaries,
+            employees_list=employees_list,
+            selected_sum_employees=selected_sum_employees,
+            selected_sum_statuses=selected_sum_statuses,
+            page=page,
+            total_pages=total_pages,
+            page_range=page_range,
+            page_url=page_url,
+            showing_from=showing_from,
+            showing_to=showing_to,
+            total_tasks=total_items
+        )
+
+    @app.route('/hr/pending-approvals')
+    @role_required('HR')
+    def hr_pending_approvals():
+        db = get_db()
+        pending_approvals_raw = db.execute('''
+            SELECT t.*, u.full_name AS employee_name, p.name AS project_name, approver.full_name AS approver_name
+            FROM tasks t
+            JOIN users u ON t.employee_id = u.id
+            LEFT JOIN projects p ON t.project_id = p.id
+            LEFT JOIN users approver ON t.approver_id = approver.id
+            WHERE t.approval_status = 'Submitted' AND t.approver_id IS NOT NULL
+            ORDER BY t.created_at DESC
+        ''').fetchall()
+        
+        pending_approvals = []
+        for row in pending_approvals_raw:
+            task_dict = dict(row)
+            try:
+                created_dt = None
+                try:
+                    created_dt = datetime.strptime(row['created_at'], '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    created_dt = datetime.strptime(row['created_at'], '%Y-%m-%d %H:%M')
+                
+                delta = datetime.now() - created_dt
+                if delta.days > 0:
+                    pending_since = f"{delta.days}d" if session.get('lang') != 'ar' else f"منذ {delta.days} يوم"
+                else:
+                    hours = delta.seconds // 3600
+                    minutes = (delta.seconds % 3600) // 60
+                    if hours > 0:
+                        pending_since = f"{hours}h {minutes}m" if session.get('lang') != 'ar' else f"منذ {hours} ساعة و {minutes} د"
+                    else:
+                        pending_since = f"{minutes}m" if session.get('lang') != 'ar' else f"منذ {minutes} د"
+            except Exception:
+                pending_since = "–"
+            task_dict['pending_since'] = pending_since
+            pending_approvals.append(task_dict)
+            
+        # Paginate pending approvals
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        total_items = len(pending_approvals)
+        total_pages = (total_items + per_page - 1) // per_page
+        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
+        offset = (page - 1) * per_page
+        paginated_approvals = pending_approvals[offset:offset+per_page]
+        
+        # Helper to generate page ranges
+        def get_pagination_range(curr, total):
+            if total <= 7:
+                return list(range(1, total + 1))
+            res = []
+            if curr <= 4:
+                res.extend([1, 2, 3, 4])
+                res.append(None)
+                res.append(total)
+            elif curr >= total - 3:
+                res.append(1)
+                res.append(None)
+                res.extend(range(total - 3, total + 1))
+            else:
+                res.append(1)
+                res.append(None)
+                res.extend([curr - 1, curr, curr + 1])
+                res.append(None)
+                res.append(total)
+            return res
+            
+        page_range = get_pagination_range(page, total_pages)
+        showing_from = offset + 1 if total_items > 0 else 0
+        showing_to = min(offset + per_page, total_items)
+        
+        def page_url(p):
+            args = request.args.to_dict(flat=False)
+            args['page'] = [str(p)]
+            return url_for('hr_pending_approvals') + '?' + urllib.parse.urlencode(args, doseq=True)
+            
+        return render_template(
+            'hr/hr_pending_approvals.html',
+            pending_approvals=paginated_approvals,
+            page=page,
+            total_pages=total_pages,
+            page_range=page_range,
+            page_url=page_url,
+            showing_from=showing_from,
+            showing_to=showing_to,
+            total_tasks=total_items
+        )

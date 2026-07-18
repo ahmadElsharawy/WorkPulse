@@ -67,9 +67,39 @@ def init_db():
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL,
-            position TEXT
+            position TEXT,
+            email TEXT,
+            phone TEXT,
+            employee_number TEXT,
+            department TEXT,
+            residence_permit_end_date TEXT,
+            hire_date TEXT
         )
     ''')
+    try:
+        db.execute('ALTER TABLE users ADD COLUMN email TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE users ADD COLUMN phone TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE users ADD COLUMN employee_number TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE users ADD COLUMN department TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE users ADD COLUMN residence_permit_end_date TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE users ADD COLUMN hire_date TEXT')
+    except sqlite3.OperationalError:
+        pass
     # Join table for employee-manager
     db.execute('''
         CREATE TABLE IF NOT EXISTS employee_managers (

@@ -9,7 +9,7 @@ def role_required(*roles):
         def wrapped(*args, **kwargs):
             if current_user.role not in roles:
                 flash('Access denied for your role.', 'danger')
-                return redirect(url_for('auth.login'))
+                return redirect(url_for('login'))
             return f(*args, **kwargs)
         return wrapped
     return decorator

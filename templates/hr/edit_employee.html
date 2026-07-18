@@ -34,6 +34,36 @@
         <div class='form-text text-muted'>{{ 'اترك الحقل فارغاً للاحتفاظ بكلمة المرور الحالية.' if current_lang == 'ar' else 'Leave blank to keep the current password.' }}</div>
       </div>
     </div>
+    <div class='row g-3 mb-4'>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('email') }}</label>
+        <input type='email' name='email' class='form-control' value='{{ user.email }}' placeholder='email@example.com'>
+      </div>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('phone') }}</label>
+        <input type='tel' name='phone' class='form-control' value='{{ user.phone }}' placeholder='+971XXXXXXXXX' pattern='\+971[0-9]{9}'>
+      </div>
+    </div>
+    <div class='row g-3 mb-4'>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('employee_number') }}</label>
+        <input type='text' name='employee_number' class='form-control' value='{{ user.employee_number }}' placeholder='T123' pattern='T\d{1,4}'>
+      </div>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('department') }}</label>
+        <input type='text' name='department' class='form-control' value='{{ user.department }}' placeholder='{{ "Department" }}'>
+      </div>
+    </div>
+    <div class='row g-3 mb-4'>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('hire_date') }}</label>
+        <input type='date' name='hire_date' class='form-control' value='{{ user.hire_date }}'>
+      </div>
+      <div class='col-md-6'>
+        <label class='form-label'>{{ _('residence_permit_end_date') }}</label>
+        <input type='date' name='residence_permit_end_date' class='form-control' value='{{ user.residence_permit_end_date }}'>
+      </div>
+    </div>
 
     <div class='row mb-4 g-3'>
       <div class='col-md-6'>
@@ -66,17 +96,16 @@
           </label>
         </div>
         {% for proj in projects %}
-          <div class='row mb-2 align-items-center g-2'>
-            <div class='col-auto'>
-              <input class='form-check-input project-checkbox' type='checkbox' name='projects' value='{{ proj.id }}' id='proj_{{ proj.id }}'
+          <div class='mb-3 pb-2 border-bottom'>
+            <div class='d-flex align-items-start mb-2'>
+              <input class='form-check-input project-checkbox me-2 mt-1' type='checkbox' name='projects' value='{{ proj.id }}' id='proj_{{ proj.id }}'
                      {% if proj.id in current_project_ids %}checked{% endif %}>
-            </div>
-            <div class='col'>
-              <label class='form-check-label text-truncate d-block mb-0' for='proj_{{ proj.id }}'>
-                <strong>{{ proj.name }}</strong> <span class='text-muted small'>({{ 'العميل' if current_lang == 'ar' else 'Client' }}: {{ proj.client }})</span>
+              <label class='form-check-label mb-0' for='proj_{{ proj.id }}' style='line-height: 1.3;'>
+                <strong>{{ proj.name }}</strong> <br>
+                <span class='text-muted small'>({{ 'العميل' if current_lang == 'ar' else 'Client' }}: {{ proj.client }})</span>
               </label>
             </div>
-            <div class='col-md-5 col-sm-6'>
+            <div class='ps-4' style='max-width: 300px;'>
               <div class='input-group input-group-sm'>
                 <span class='input-group-text'>{{ 'الحد:' if current_lang == 'ar' else 'Limit:' }}</span>
                 <input type='number' name='allocated_hours_{{ proj.id }}' class='form-control project-hours-input' 

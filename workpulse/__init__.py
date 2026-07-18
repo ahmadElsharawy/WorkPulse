@@ -31,7 +31,21 @@ def create_app():
     # Context processor
     @app.context_processor
     def utility_processor():
-        return dict(_=translate, current_lang=session.get('lang', 'ar'))
+        from flask_login import current_user
+        from .database import get_db
+        pending_count = 0
+        if current_user and current_user.is_authenticated:
+            try:
+                db = get_db()
+                if current_user.role == 'HR':
+                    row = db.execute("SELECT COUNT(*) FROM tasks WHERE approval_status = 'Submitted'").fetchone()
+                else:
+                    row = db.execute("SELECT COUNT(*) FROM tasks WHERE approver_id = ? AND approval_status = 'Submitted'", (current_user.id,)).fetchone()
+                if row:
+                    pending_count = row[0]
+            except Exception:
+                pass
+        return dict(_=translate, current_lang=session.get('lang', 'ar'), pending_count=pending_count)
         
     # Before request preference sync
     @app.before_request

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'الموافقات المعلقة في الشركة' if current_lang == 'ar' else 'All Pending Approvals' }} – WorkPulse{% endblock %}
+{% block content %}
+<div class='page-header'>
+  <div>
+    <h1 class='page-title'>⏳ {{ 'الموافقات المعلقة في الشركة' if current_lang == 'ar' else 'All Pending Approvals' }}</h1>
+    <p class='page-subtitle'>{{ 'مراقبة ومتابعة الطلبات المعلقة في انتظار موافقة المدراء المعنيين' if current_lang == 'ar' else 'Monitor and track timesheets currently pending approval from managers' }}</p>
+  </div>
+  <div>
+    <a href='{{ url_for("hr_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
+  </div>
+</div>
+
+<div class='card shadow-sm'>
+  <div class='table-responsive'>
+    <table class='table mb-0 align-middle table-sortable' data-sortable>
+      <thead>
+        <tr class='table-light'>
+          <th class='ps-4'>{{ _('employees') }}</th>
+          <th>{{ _('task_title') }}</th>
+          <th>{{ _('projects') }}</th>
+          <th>{{ _('duration') }}</th>
+          <th>{{ 'المدير المعتمد' if current_lang == 'ar' else 'Assigned Approver' }}</th>
+          <th class='pe-4'>{{ 'معلقة منذ' if current_lang == 'ar' else 'Pending Since' }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in pending_approvals %}
+        <tr>
+          <td class='ps-4'>
+            <a href="{{ url_for('hr_employee_detail', user_id=task.employee_id) }}" class="fw-bold text-decoration-none">{{ task.employee_name }}</a>
+          </td>
+          <td>
+            <strong>{{ task.title }}</strong>
+            {% if task.description %}
+              <small class='text-muted d-block'>{{ task.description }}</small>
+            {% endif %}
+          </td>
+          <td>
+            {% if task.project_id %}
+              <a href="{{ url_for('hr_project_detail', project_id=task.project_id) }}" class="badge bg-info-subtle text-info border border-info-subtle text-decoration-none">{{ task.project_name }}</a>
+            {% else %}
+              <span class='text-muted'>–</span>
+            {% endif %}
+          </td>
+          <td style='font-family:monospace;'>{{ task|format_duration }}</td>
+          <td>
+            <span class='badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1'>{{ task.approver_name }}</span>
+          </td>
+          <td class='pe-4'>
+            <span class='text-danger fw-bold' style='font-size:0.9rem;'>{{ task.pending_since }}</span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan='6' class='text-center text-muted py-5'>
+            <div style='font-size: 2.5rem;' class='mb-2'>🎉</div>
+            <h5>{{ 'لا توجد موافقات معلقة' if current_lang == 'ar' else 'No Pending Approvals' }}</h5>
+            <p class='mb-0'>{{ 'تمت موافقة واعتماد جميع جداول الساعات بالشركة.' if current_lang == 'ar' else 'All timesheet approval requests across the company have been approved.' }}</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- Pagination controls for HR Pending Approvals -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-light py-2">
+    <nav class="d-flex justify-content-between align-items-center">
+      <div class="text-muted small">
+        {% if current_lang == 'ar' %}
+          عرض طلبات الموافقة من <strong>{{ showing_from }}</strong> إلى <strong>{{ showing_to }}</strong> من إجمالي <strong>{{ total_tasks }}</strong> طلب
+        {% else %}
+          Showing requests <strong>{{ showing_from }}</strong> to <strong>{{ showing_to }}</strong> of <strong>{{ total_tasks }}</strong>
+        {% endif %}
+      </div>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(1) }}">{{ 'الأول' if current_lang == 'ar' else 'First' }}</a>
+        </li>
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(page - 1) }}">{{ 'السابق' if current_lang == 'ar' else 'Previous' }}</a>
+        </li>
+        
+        {% for p in page_range %}
+          {% if p is none %}
+            <li class="page-item disabled">
+              <span class="page-link">...</span>
+            </li>
+          {% else %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link" href="{{ page_url(p) }}">{{ p }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+        
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(page + 1) }}">{{ 'التالي' if current_lang == 'ar' else 'Next' }}</a>
+        </li>
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+          <a class="page-link" href="{{ page_url(total_pages) }}">{{ 'الأخير' if current_lang == 'ar' else 'Last' }}</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
