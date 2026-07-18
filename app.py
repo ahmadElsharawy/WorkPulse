@@ -2,7 +2,7 @@
 import os, json
 import sqlite3
 from datetime import datetime, timedelta
-from flask import Flask, g, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, g, render_template, request, redirect, url_for, flash, jsonify, send_file, session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 
@@ -11,6 +11,275 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['DATABASE'] = os.path.join(app.instance_path, 'database.db')
 
 os.makedirs(app.instance_path, exist_ok=True)
+
+TRANSLATIONS = {
+    'en': {
+        'dashboard': 'Dashboard',
+        'manage_projects': 'Manage Projects',
+        'hr_reports': 'HR Reports',
+        'change_password': 'Change Password',
+        'logout': 'Logout',
+        'welcome': 'Welcome',
+        'projects': 'Projects',
+        'employees': 'Employees',
+        'tasks': 'Tasks',
+        'add_project': 'Add New Project',
+        'project_name': 'Project Name',
+        'client': 'Client',
+        'start_date': 'Start Date',
+        'end_date': 'End Date',
+        'actions': 'Actions',
+        'edit': 'Edit',
+        'delete': 'Delete',
+        'allocated_hours': 'Allocated Hours',
+        'worked_hours': 'Worked Hours',
+        'remaining_hours': 'Remaining Hours',
+        'budget_status': 'Budget Status',
+        'over_budget': 'Over Budget',
+        'near_limit': 'Near Limit',
+        'within_limit': 'Within Limit',
+        'unlimited': 'Unlimited',
+        'status': 'Status',
+        'category': 'Category',
+        'add_task': 'Add Task',
+        'task_title': 'Task Title',
+        'description': 'Description',
+        'approval_status': 'Approval Status',
+        'submit_approval': 'Submit for Approval',
+        'pending_approvals': 'Pending Approvals',
+        'approve': 'Approve',
+        'reject': 'Reject',
+        'comments': 'Comments',
+        'rejection_comments': 'Rejection Comments',
+        'language': 'Language',
+        'save': 'Save',
+        'cancel': 'Cancel',
+        'top_employees': 'Top Employees (Worked Hours)',
+        'project_time_distribution': 'Project Time Distribution',
+        'weekly_activity': 'Weekly Activity (Hours)',
+        'print_report': 'Print PDF Report',
+        'filter': 'Filter',
+        'all': 'All',
+        'assign_employees': 'Assign Employees',
+        'select_all': 'Select All',
+        'subordinates': 'Subordinates',
+        'subordinate_tasks': 'Subordinate Tasks',
+        'add_subordinate_task': 'Assign Task to Subordinate',
+        'assigned_to': 'Assigned To',
+        'view_details': 'View Details',
+        'client_name': 'Client Name',
+        'duration': 'Duration',
+        'date': 'Date',
+        'unlimited_hours': 'Unlimited hours',
+        'hrs_remaining': 'hrs remaining',
+        'project_details': 'Project Details',
+        'employee_details': 'Employee Details',
+        'allocated': 'Allocated',
+        'worked': 'Worked',
+        'remaining': 'Remaining',
+        'add_employee': 'Add Employee',
+        'full_name': 'Full Name',
+        'username': 'Username',
+        'position': 'Position',
+        'role': 'Role',
+        'manager': 'Manager',
+        'assign_managers': 'Assign Managers',
+        'existing_employees': 'Existing Employees',
+        'existing_projects': 'Existing Projects',
+        'no_projects_found': 'No projects found in the system.',
+        'no_employees_found': 'No employees found in the system.',
+        'add_new_task': 'Add New Task',
+        'select_project': 'Select Project',
+        'select_category': 'Select Category',
+        'select_employee': 'Select Employee',
+        'subordinate': 'Subordinate',
+        'no_tasks_found': 'No tasks found.',
+        'date_range': 'Date Range',
+        'from': 'From',
+        'to': 'To',
+        'export_excel': 'Export Excel',
+        'status_order': 'Status Order',
+        'search': 'Search',
+        'submit': 'Submit',
+        'timesheet': 'Timesheet',
+        'submit_timesheet_desc': 'Submit all finished tasks for approval',
+        'submit_finished_tasks': 'Submit Finished Tasks',
+        'my_tasks': 'My Tasks',
+        'assigned_tasks': 'Assigned Tasks',
+        'running': 'Running',
+        'pause': 'Paused',
+        'finish': 'Finished',
+        'not_start': 'Not Started',
+        'timesheet_status': 'Timesheet Status',
+        'no_pending_approvals': 'No pending approvals.',
+        'comments_optional': 'Comments (Optional)'
+    },
+    'ar': {
+        'dashboard': 'لوحة التحكم',
+        'manage_projects': 'إدارة المشاريع',
+        'hr_reports': 'تقارير الموارد البشرية',
+        'change_password': 'تغيير كلمة المرور',
+        'logout': 'تسجيل الخروج',
+        'welcome': 'مرحباً',
+        'projects': 'المشاريع',
+        'employees': 'الموظفين',
+        'tasks': 'المهام',
+        'add_project': 'إضافة مشروع جديد',
+        'project_name': 'اسم المشروع',
+        'client': 'العميل',
+        'start_date': 'تاريخ البدء',
+        'end_date': 'تاريخ الانتهاء',
+        'actions': 'الإجراءات',
+        'edit': 'تعديل',
+        'delete': 'حذف',
+        'allocated_hours': 'الساعات المخصصة',
+        'worked_hours': 'الساعات الفعلية',
+        'remaining_hours': 'الساعات المتبقية',
+        'budget_status': 'حالة الميزانية',
+        'over_budget': 'تجاوز الميزانية',
+        'near_limit': 'قريب من الحد',
+        'within_limit': 'ضمن الحد',
+        'unlimited': 'غير محدود',
+        'status': 'الحالة',
+        'category': 'الفئة',
+        'add_task': 'إضافة مهمة',
+        'task_title': 'عنوان المهمة',
+        'description': 'الوصف',
+        'approval_status': 'حالة الموافقة',
+        'submit_approval': 'تقديم للموافقة',
+        'pending_approvals': 'موافقات معلقة',
+        'approve': 'موافقة',
+        'reject': 'رفض',
+        'comments': 'الملاحظات',
+        'rejection_comments': 'ملاحظات الرفض',
+        'language': 'اللغة',
+        'save': 'حفظ',
+        'cancel': 'إلغاء',
+        'top_employees': 'الموظفون الأكثر عملاً (بالساعات)',
+        'project_time_distribution': 'توزيع الوقت على المشاريع',
+        'weekly_activity': 'النشاط الأسبوعي (بالساعات)',
+        'print_report': 'طباعة تقرير PDF',
+        'filter': 'تصفية',
+        'all': 'الكل',
+        'assign_employees': 'تعيين الموظفين',
+        'select_all': 'تحديد الكل',
+        'subordinates': 'المرؤوسين',
+        'subordinate_tasks': 'مهام المرؤوسين',
+        'add_subordinate_task': 'إسناد مهمة لمرؤوس',
+        'assigned_to': 'مُسند إلى',
+        'view_details': 'عرض التفاصيل',
+        'client_name': 'اسم العميل',
+        'duration': 'المدة',
+        'date': 'التاريخ',
+        'unlimited_hours': 'ساعات غير محدودة',
+        'hrs_remaining': 'ساعة متبقية',
+        'project_details': 'تفاصيل المشروع',
+        'employee_details': 'تفاصيل الموظف',
+        'allocated': 'المخصص',
+        'worked': 'الفعلي',
+        'remaining': 'المتبقي',
+        'add_employee': 'إضافة موظف',
+        'full_name': 'الاسم الكامل',
+        'username': 'اسم المستخدم',
+        'position': 'المسمى الوظيفي',
+        'role': 'الدور',
+        'manager': 'المدير',
+        'assign_managers': 'تعيين المدراء',
+        'existing_employees': 'الموظفون الحاليون',
+        'existing_projects': 'المشاريع الحالية',
+        'no_projects_found': 'لا توجد مشاريع في النظام.',
+        'no_employees_found': 'لا يوجد موظفون في النظام.',
+        'add_new_task': 'إضافة مهمة جديدة',
+        'select_project': 'اختر المشروع',
+        'select_category': 'اختر الفئة',
+        'select_employee': 'اختر الموظف',
+        'subordinate': 'المرؤوس',
+        'no_tasks_found': 'لا توجد مهام.',
+        'date_range': 'النطاق الزمني',
+        'from': 'من',
+        'to': 'إلى',
+        'export_excel': 'تصدير Excel',
+        'status_order': 'ترتيب الحالة',
+        'search': 'بحث',
+        'submit': 'إرسال',
+        'timesheet': 'جدول الساعات',
+        'submit_timesheet_desc': 'إرسال جميع المهام المنتهية للمراجعة والموافقة',
+        'submit_finished_tasks': 'إرسال المهام المنتهية',
+        'my_tasks': 'مهامي',
+        'assigned_tasks': 'المهام المُسندة',
+        'running': 'قيد التشغيل',
+        'pause': 'متوقفة مؤقتاً',
+        'finish': 'منتهية',
+        'not_start': 'لم تبدأ',
+        'timesheet_status': 'حالة جدول الساعات',
+        'no_pending_approvals': 'لا توجد موافقات معلقة.',
+        'comments_optional': 'ملاحظات (اختياري)'
+    }
+}
+
+import urllib.parse
+
+def get_user_preferences(user_id):
+    db = get_db()
+    row = db.execute('SELECT * FROM user_preferences WHERE user_id = ?', (user_id,)).fetchone()
+    if not row:
+        try:
+            db.execute('INSERT INTO user_preferences (user_id, lang, filters) VALUES (?, ?, ?)', (user_id, 'ar', '{}'))
+            db.commit()
+        except sqlite3.IntegrityError:
+            pass
+        return {'user_id': user_id, 'lang': 'ar', 'filters': {}}
+    
+    filters = {}
+    if row['filters']:
+        try:
+            filters = json.loads(row['filters'])
+        except Exception:
+            filters = {}
+    return {
+        'user_id': row['user_id'],
+        'lang': row['lang'] or 'ar',
+        'filters': filters
+    }
+
+def save_user_preferences(user_id, lang=None, filters=None):
+    db = get_db()
+    pref = get_user_preferences(user_id)
+    new_lang = lang if lang is not None else pref['lang']
+    new_filters = pref['filters']
+    if filters is not None:
+        for page_key, page_val in filters.items():
+            new_filters[page_key] = page_val
+            
+    db.execute('''
+        INSERT OR REPLACE INTO user_preferences (user_id, lang, filters)
+        VALUES (?, ?, ?)
+    ''', (user_id, new_lang, json.dumps(new_filters)))
+    db.commit()
+
+@app.before_request
+def load_user_preferences_to_session():
+    if request.endpoint == 'static':
+        return
+    if current_user and current_user.is_authenticated:
+        pref = get_user_preferences(current_user.id)
+        if session.get('lang') != pref['lang']:
+            session['lang'] = pref['lang']
+
+@app.context_processor
+def utility_processor():
+    def translate(key):
+        lang = session.get('lang', 'ar')
+        return TRANSLATIONS.get(lang, {}).get(key, key)
+    return dict(_=translate, current_lang=session.get('lang', 'ar'))
+
+@app.route('/set_language/<lang>')
+def set_language(lang):
+    if lang in ['ar', 'en']:
+        session['lang'] = lang
+        if current_user and current_user.is_authenticated:
+            save_user_preferences(current_user.id, lang=lang)
+    return redirect(request.referrer or url_for('index'))
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -178,6 +447,31 @@ def init_db():
             FOREIGN KEY(employee_id) REFERENCES users(id),
             FOREIGN KEY(creator_id) REFERENCES users(id),
             FOREIGN KEY(project_id) REFERENCES projects(id)
+        )
+    ''')
+    try:
+        db.execute('ALTER TABLE tasks ADD COLUMN category TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE tasks ADD COLUMN approval_status TEXT DEFAULT "Draft"')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE tasks ADD COLUMN approval_comments TEXT')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        db.execute('ALTER TABLE tasks ADD COLUMN approver_id INTEGER')
+    except sqlite3.OperationalError:
+        pass
+        
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS user_preferences (
+            user_id INTEGER PRIMARY KEY,
+            lang TEXT,
+            filters TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
     db.commit()
@@ -450,6 +744,35 @@ def change_password():
 @role_required('HR')
 def hr_dashboard():
     db = get_db()
+    
+    if 'reset' in request.args:
+        save_user_preferences(current_user.id, filters={'hr_dashboard': {}})
+        return redirect(url_for('hr_dashboard'))
+        
+    if 'filter_applied' in request.args:
+        new_filters = {
+            'sum_employees': request.args.getlist('sum_employees'),
+            'sum_statuses': request.args.getlist('sum_statuses'),
+            'summary_created_from': request.args.get('summary_created_from', ''),
+            'summary_created_to': request.args.get('summary_created_to', '')
+        }
+        save_user_preferences(current_user.id, filters={'hr_dashboard': new_filters})
+    else:
+        pref = get_user_preferences(current_user.id)
+        saved = pref.get('filters', {}).get('hr_dashboard', {})
+        if saved:
+            params = []
+            for k, v in saved.items():
+                if isinstance(v, list):
+                    for item in v:
+                        params.append((k, item))
+                else:
+                    if v:
+                        params.append((k, v))
+            if params:
+                params.append(('filter_applied', '1'))
+                return redirect(url_for('hr_dashboard') + '?' + urllib.parse.urlencode(params))
+                
     total_employees = db.execute("SELECT COUNT(*) FROM users WHERE role = 'Employee'").fetchone()[0]
     # Fetch employee task summary
     # Prepare filters
@@ -513,6 +836,68 @@ def hr_dashboard():
     employees_list = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
     total_projects = db.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
     active_tasks = db.execute("SELECT COUNT(*) FROM tasks WHERE status = 'Running'").fetchone()[0]
+
+    # Fetch project time distribution
+    proj_dist = db.execute('''
+        SELECT p.name, COALESCE(SUM(t.running_duration), 0) AS total_duration
+        FROM projects p
+        LEFT JOIN tasks t ON p.id = t.project_id
+        GROUP BY p.id
+        HAVING total_duration > 0
+    ''').fetchall()
+    hr_chart_projects_labels = [r['name'] for r in proj_dist]
+    hr_chart_projects_data = [round(r['total_duration'] / 3600.0, 2) for r in proj_dist]
+    
+    # Fetch top 5 employees by hours
+    top_emp = db.execute('''
+        SELECT u.full_name, COALESCE(SUM(t.running_duration), 0) AS total_duration
+        FROM users u
+        JOIN tasks t ON u.id = t.employee_id
+        WHERE u.role != 'HR'
+        GROUP BY u.id
+        HAVING total_duration > 0
+        ORDER BY total_duration DESC
+        LIMIT 5
+    ''').fetchall()
+    hr_chart_employees_labels = [r['full_name'] for r in top_emp]
+    hr_chart_employees_data = [round(r['total_duration'] / 3600.0, 2) for r in top_emp]
+    
+    # Fetch pending approvals (excluding tasks that do not require approval)
+    pending_approvals_raw = db.execute('''
+        SELECT t.*, u.full_name AS employee_name, p.name AS project_name, approver.full_name AS approver_name
+        FROM tasks t
+        JOIN users u ON t.employee_id = u.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN users approver ON t.approver_id = approver.id
+        WHERE t.approval_status = 'Submitted' AND t.approver_id IS NOT NULL
+        ORDER BY t.created_at DESC
+    ''').fetchall()
+    
+    pending_approvals = []
+    for row in pending_approvals_raw:
+        task_dict = dict(row)
+        try:
+            created_dt = None
+            try:
+                created_dt = datetime.strptime(row['created_at'], '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                created_dt = datetime.strptime(row['created_at'], '%Y-%m-%d %H:%M')
+            
+            delta = datetime.now() - created_dt
+            if delta.days > 0:
+                pending_since = f"{delta.days}d" if session.get('lang') != 'ar' else f"منذ {delta.days} يوم"
+            else:
+                hours = delta.seconds // 3600
+                minutes = (delta.seconds % 3600) // 60
+                if hours > 0:
+                    pending_since = f"{hours}h {minutes}m" if session.get('lang') != 'ar' else f"منذ {hours} ساعة و {minutes} د"
+                else:
+                    pending_since = f"{minutes}m" if session.get('lang') != 'ar' else f"منذ {minutes} د"
+        except Exception:
+            pending_since = "–"
+        task_dict['pending_since'] = pending_since
+        pending_approvals.append(task_dict)
+
     return render_template(
         'hr.html',
         total_employees=total_employees,
@@ -521,7 +906,12 @@ def hr_dashboard():
         summaries=summaries,
         employees_list=employees_list,
         selected_sum_employees=selected_sum_employees,
-        selected_sum_statuses=selected_sum_statuses
+        selected_sum_statuses=selected_sum_statuses,
+        hr_chart_projects_labels=hr_chart_projects_labels,
+        hr_chart_projects_data=hr_chart_projects_data,
+        hr_chart_employees_labels=hr_chart_employees_labels,
+        hr_chart_employees_data=hr_chart_employees_data,
+        pending_approvals=pending_approvals
     )
 
 
@@ -530,6 +920,36 @@ def hr_dashboard():
 def hr_tracking():
     db = get_db()
     
+    if 'reset' in request.args:
+        save_user_preferences(current_user.id, filters={'hr_tracking': {}})
+        return redirect(url_for('hr_tracking'))
+        
+    if 'filter_applied' in request.args:
+        new_filters = {
+            'employees': request.args.getlist('employees'),
+            'projects': request.args.getlist('projects'),
+            'statuses': request.args.getlist('statuses'),
+            'created_from': request.args.get('created_from', ''),
+            'created_to': request.args.get('created_to', ''),
+            'creators': request.args.getlist('creators')
+        }
+        save_user_preferences(current_user.id, filters={'hr_tracking': new_filters})
+    else:
+        pref = get_user_preferences(current_user.id)
+        saved = pref.get('filters', {}).get('hr_tracking', {})
+        if saved:
+            params = []
+            for k, v in saved.items():
+                if isinstance(v, list):
+                    for item in v:
+                        params.append((k, item))
+                else:
+                    if v:
+                        params.append((k, v))
+            if params:
+                params.append(('filter_applied', '1'))
+                return redirect(url_for('hr_tracking') + '?' + urllib.parse.urlencode(params))
+                
     # Get filter inputs
     selected_employees = [int(x) for x in request.args.getlist('employees') if x.isdigit()]
     selected_projects = []
@@ -676,7 +1096,8 @@ def hr_employees():
 def hr_projects():
     db = get_db()
     projects = db.execute('SELECT * FROM projects').fetchall()
-    return render_template('hr_projects.html', projects=projects)
+    employees = db.execute('SELECT id, full_name, username FROM users WHERE role != "HR" ORDER BY full_name').fetchall()
+    return render_template('hr_projects.html', projects=projects, employees=employees)
 
 @app.route('/hr/employees/<int:user_id>')
 @role_required('HR')
@@ -756,11 +1177,16 @@ def add_project():
     client = request.form.get('client')
     start_date = request.form.get('start_date')
     end_date = request.form.get('end_date')
+    employee_ids = request.form.getlist('employee_ids')
     if name and client:
         db = get_db()
         try:
-            db.execute('INSERT INTO projects (name, client, start_date, end_date) VALUES (?,?,?,?)',
+            cursor = db.execute('INSERT INTO projects (name, client, start_date, end_date) VALUES (?,?,?,?)',
                        (name, client, start_date or None, end_date or None))
+            project_id = cursor.lastrowid
+            for emp_id in employee_ids:
+                db.execute('INSERT OR IGNORE INTO employee_projects (employee_id, project_id, allocated_hours) VALUES (?,?,0)',
+                           (int(emp_id), project_id))
             db.commit()
             flash('Project added successfully.', 'success')
         except sqlite3.IntegrityError:
@@ -783,10 +1209,16 @@ def edit_project(project_id):
         client = request.form.get('client')
         start_date = request.form.get('start_date')
         end_date = request.form.get('end_date')
+        employee_ids = request.form.getlist('employee_ids')
         if name and client:
             try:
                 db.execute('UPDATE projects SET name = ?, client = ?, start_date = ?, end_date = ? WHERE id = ?',
                            (name, client, start_date or None, end_date or None, project_id))
+                
+                db.execute('DELETE FROM employee_projects WHERE project_id = ?', (project_id,))
+                for emp_id in employee_ids:
+                    db.execute('INSERT INTO employee_projects (employee_id, project_id, allocated_hours) VALUES (?, ?, 100)',
+                               (int(emp_id), project_id))
                 db.commit()
                 flash('Project updated successfully.', 'success')
                 return redirect(url_for('hr_projects'))
@@ -795,21 +1227,25 @@ def edit_project(project_id):
         else:
             flash('Project name and Client are required.', 'danger')
             
-    return render_template('edit_project.html', project=project)
+    employees = db.execute("SELECT id, full_name, username FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
+    assigned = db.execute("SELECT employee_id FROM employee_projects WHERE project_id = ?", (project_id,)).fetchall()
+    assigned_ids = [r['employee_id'] for r in assigned]
+            
+    return render_template('edit_project.html', project=project, employees=employees, assigned_ids=assigned_ids)
 # ----- HR Reporting -----
 
 from io import BytesIO
 import pandas as pd
 from flask import send_file, jsonify
 
-def _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids=None):
+def _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids=None, category=None):
     """Return list of dicts with task data for employee report.
     Excludes running tasks and filters by creation date.
     """
     db = get_db()
     params = [employee_id, f"{date_from} 00:00", f"{date_to} 23:59"]
     query = '''
-        SELECT t.id, t.created_at, t.running_duration, p.id as project_id, p.name as project_name
+        SELECT t.id, t.created_at, t.running_duration, t.title, t.category, t.approval_status, p.id as project_id, p.name as project_name
         FROM tasks t
         JOIN projects p ON t.project_id = p.id
         WHERE t.employee_id = ?
@@ -820,17 +1256,20 @@ def _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_id
         placeholders = ','.join('?' for _ in project_ids)
         query += f" AND p.id IN ({placeholders})"
         params.extend(project_ids)
+    if category:
+        query += " AND t.category = ?"
+        params.append(category)
     rows = db.execute(query, params).fetchall()
     return [dict(row) for row in rows]
 
-def _fetch_tasks_for_project_report(project_id, date_from, date_to, employee_ids=None):
+def _fetch_tasks_for_project_report(project_id, date_from, date_to, employee_ids=None, category=None):
     """Return list of dicts with task data for project report.
     If project_id is None, include all projects.
     """
     db = get_db()
     params = [f"{date_from} 00:00", f"{date_to} 23:59"]
     query = '''
-        SELECT t.id, t.created_at, t.running_duration, u.id as employee_id, u.full_name as employee_name, p.id as project_id, p.name as project_name
+        SELECT t.id, t.created_at, t.running_duration, t.title, t.category, t.approval_status, u.id as employee_id, u.full_name as employee_name, p.id as project_id, p.name as project_name
         FROM tasks t
         JOIN users u ON t.employee_id = u.id
         LEFT JOIN projects p ON t.project_id = p.id
@@ -844,6 +1283,9 @@ def _fetch_tasks_for_project_report(project_id, date_from, date_to, employee_ids
         placeholders = ','.join('?' for _ in employee_ids)
         query += f" AND u.id IN ({placeholders})"
         params.extend(employee_ids)
+    if category:
+        query += " AND t.category = ?"
+        params.append(category)
     rows = db.execute(query, params).fetchall()
     return [dict(row) for row in rows]
 
@@ -1016,6 +1458,7 @@ def hr_export():
     report_type = payload.get('type')
     date_from = payload.get('date_from')
     date_to = payload.get('date_to')
+    category = payload.get('category')
     if not report_type or not date_from or not date_to:
         return jsonify({'error': 'Missing required parameters'}), 400
     generated_by = current_user.full_name or current_user.username
@@ -1026,7 +1469,7 @@ def hr_export():
         emp = get_db().execute('SELECT full_name FROM users WHERE id = ?', (employee_id,)).fetchone()
         if not emp:
             return jsonify({'error': 'Employee not found'}), 404
-        rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, payload.get('project_ids'))
+        rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, payload.get('project_ids'), category)
         excel_io = _generate_employee_excel(rows, emp['full_name'], date_from, date_to, generated_by)
         sanitized_name = re.sub(r'[^A-Za-z0-9]+', '_', emp['full_name']).strip('_')
         filename = f"{sanitized_name}_{date_from}_{date_to}.xlsx"
@@ -1038,7 +1481,7 @@ def hr_export():
             if not proj:
                 return jsonify({'error': 'Project not found'}), 404
             project_name = proj['name']
-        rows = _fetch_tasks_for_project_report(project_id, date_from, date_to)
+        rows = _fetch_tasks_for_project_report(project_id, date_from, date_to, category=category)
         excel_io = _generate_project_excel(rows, project_name, date_from, date_to, generated_by)
         if project_name:
             sanitized_proj = re.sub(r'[^A-Za-z0-9]+', '_', project_name).strip('_')
@@ -1195,6 +1638,41 @@ def delete_employee(user_id):
 @role_required('Employee')
 def employee_dashboard():
     db = get_db()
+    
+    if 'reset' in request.args:
+        save_user_preferences(current_user.id, filters={'employee_dashboard': {}})
+        return redirect(url_for('employee_dashboard'))
+        
+    if 'filter_applied' in request.args:
+        new_filters = {
+            'projects': request.args.getlist('projects'),
+            'statuses': request.args.getlist('statuses'),
+            'created_from': request.args.get('created_from', ''),
+            'created_to': request.args.get('created_to', ''),
+            'creators': request.args.getlist('creators'),
+            'sub_employees': request.args.getlist('sub_employees'),
+            'sub_projects': request.args.getlist('sub_projects'),
+            'sub_statuses': request.args.getlist('sub_statuses'),
+            'sub_created_from': request.args.get('sub_created_from', ''),
+            'sub_created_to': request.args.get('sub_created_to', ''),
+            'sub_creators': request.args.getlist('sub_creators')
+        }
+        save_user_preferences(current_user.id, filters={'employee_dashboard': new_filters})
+    else:
+        pref = get_user_preferences(current_user.id)
+        saved = pref.get('filters', {}).get('employee_dashboard', {})
+        if saved:
+            params = []
+            for k, v in saved.items():
+                if isinstance(v, list):
+                    for item in v:
+                        params.append((k, item))
+                else:
+                    if v:
+                        params.append((k, v))
+            if params:
+                params.append(('filter_applied', '1'))
+                return redirect(url_for('employee_dashboard') + '?' + urllib.parse.urlencode(params))
     
     # ------------------ My Tasks Filters ------------------
     selected_projects = []
@@ -1396,6 +1874,44 @@ def employee_dashboard():
             'remaining_hours': remaining_hours
         })
 
+    # Fetch project time split for charts
+    chart_projects_labels = [r['name'] for r in balance_rows if r['worked_seconds'] > 0]
+    chart_projects_data = [round(r['worked_seconds'] / 3600.0, 2) for r in balance_rows if r['worked_seconds'] > 0]
+    
+    # Fetch weekly daily history (last 7 days)
+    chart_weekly_labels = []
+    chart_weekly_data = []
+    today = datetime.now().date()
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        day_str = day.strftime('%Y-%m-%d')
+        chart_weekly_labels.append(day.strftime('%b %d') if session.get('lang') != 'ar' else day.strftime('%m/%d'))
+        
+        row = db.execute('''
+            SELECT COALESCE(SUM(running_duration), 0) AS daily_seconds
+            FROM tasks
+            WHERE employee_id = ? AND substr(created_at, 1, 10) = ?
+        ''', (current_user.id, day_str)).fetchone()
+        chart_weekly_data.append(round(row['daily_seconds'] / 3600.0, 2))
+        
+    # Fetch pending subordinate approvals explicitly routed to this manager
+    pending_sub_approvals = db.execute('''
+        SELECT t.*, u.full_name AS employee_name, p.name AS project_name
+        FROM tasks t
+        JOIN users u ON t.employee_id = u.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        WHERE t.approver_id = ? AND t.approval_status = 'Submitted'
+        ORDER BY t.created_at DESC
+    ''', (current_user.id,)).fetchall()
+
+    # Fetch this employee's list of managers
+    my_managers = db.execute('''
+        SELECT u.id, u.full_name, u.username
+        FROM users u
+        JOIN employee_managers em ON u.id = em.manager_id
+        WHERE em.employee_id = ?
+    ''', (current_user.id,)).fetchall()
+
     return render_template(
         'employee.html', 
         tasks=tasks, 
@@ -1416,7 +1932,13 @@ def employee_dashboard():
         sub_created_from=sub_created_from,
         sub_created_to=sub_created_to,
         selected_sub_creators=selected_sub_creators,
-        assigned_project_balances=assigned_project_balances
+        assigned_project_balances=assigned_project_balances,
+        chart_projects_labels=chart_projects_labels,
+        chart_projects_data=chart_projects_data,
+        chart_weekly_labels=chart_weekly_labels,
+        chart_weekly_data=chart_weekly_data,
+        pending_sub_approvals=pending_sub_approvals,
+        my_managers=my_managers
     )
 
 @app.route('/employee/add', methods=['GET', 'POST'])
@@ -1427,9 +1949,10 @@ def add_task():
         title = request.form['title']
         description = request.form.get('description', '')
         project_id = int(request.form['project_id'])
+        category = request.form.get('category', 'Other')
         now = datetime.now().strftime('%Y-%m-%d %H:%M')
-        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
-                   (current_user.id, project_id, title, description, 'Pause', now, 0, current_user.id))
+        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id, category) VALUES (?,?,?,?,?,?,?,?,?)',
+                   (current_user.id, project_id, title, description, 'Pause', now, 0, current_user.id, category))
         db.commit()
         flash('Task added.', 'success')
         return redirect(url_for('employee_dashboard'))
@@ -1478,6 +2001,7 @@ def edit_task(task_id):
         description = request.form['description']
         new_status = request.form['status']
         project_id = int(request.form['project_id'])
+        category = request.form.get('category', 'Other')
         
         old_status = task['status']
         old_running_duration = task['running_duration'] or 0
@@ -1500,11 +2024,29 @@ def edit_task(task_id):
         elif old_status != 'Running' and new_status == 'Running':
             new_last_started_at = now_utc.isoformat()
             
+        approver_id = None
+        approval_status = 'Draft'
+        if new_status == 'Finish':
+            if task['creator_id'] != current_user.id:
+                approver_id = task['creator_id']
+                approval_status = 'Submitted'
+            else:
+                req_approver = request.form.get('approver_id')
+                if req_approver and req_approver != '' and req_approver != '0':
+                    approver_id = int(req_approver)
+                    approval_status = 'Submitted'
+                else:
+                    approver_id = None
+                    approval_status = 'Approved'
+        else:
+            approval_status = 'Draft'
+            approver_id = None
+
         db.execute('''
             UPDATE tasks 
-            SET title = ?, description = ?, status = ?, running_duration = ?, last_started_at = ?, project_id = ?
+            SET title = ?, description = ?, status = ?, running_duration = ?, last_started_at = ?, project_id = ?, category = ?, approval_status = ?, approver_id = ?
             WHERE id = ? AND employee_id = ?
-        ''', (title, description, new_status, new_running_duration, new_last_started_at, project_id, task_id, current_user.id))
+        ''', (title, description, new_status, new_running_duration, new_last_started_at, project_id, category, approval_status, approver_id, task_id, current_user.id))
         db.commit()
         flash('Task updated.', 'success')
         return redirect(url_for('employee_dashboard'))
@@ -1535,13 +2077,20 @@ def edit_task(task_id):
         raw_fallback = db.execute('SELECT * FROM projects ORDER BY name').fetchall()
         projects = [{'id': p['id'], 'name': f"{p['name']} (Unlimited hours)"} for p in raw_fallback]
         
-    return render_template('edit_task.html', task=task, projects=projects)
+    my_managers = db.execute('''
+        SELECT u.id, u.full_name, u.username
+        FROM users u
+        JOIN employee_managers em ON u.id = em.manager_id
+        WHERE em.employee_id = ?
+    ''', (current_user.id,)).fetchall()
+
+    return render_template('edit_task.html', task=task, projects=projects, my_managers=my_managers)
 
 @app.route('/employee/task/<int:task_id>/update_status', methods=['POST'])
 @role_required('Employee')
 def update_task_status(task_id):
     db = get_db()
-    task = db.execute('SELECT status, running_duration, last_started_at FROM tasks WHERE id = ? AND employee_id = ?', (task_id, current_user.id)).fetchone()
+    task = db.execute('SELECT creator_id, employee_id, status, running_duration, last_started_at FROM tasks WHERE id = ? AND employee_id = ?', (task_id, current_user.id)).fetchone()
     if not task:
         flash('Task not found.', 'danger')
         return redirect(url_for('employee_dashboard'))
@@ -1569,11 +2118,29 @@ def update_task_status(task_id):
         elif old_status != 'Running' and new_status == 'Running':
             new_last_started_at = now_utc.isoformat()
             
+        approver_id = None
+        approval_status = 'Draft'
+        if new_status == 'Finish':
+            if task['creator_id'] != current_user.id:
+                approver_id = task['creator_id']
+                approval_status = 'Submitted'
+            else:
+                req_approver = request.form.get('approver_id')
+                if req_approver and req_approver != '' and req_approver != '0':
+                    approver_id = int(req_approver)
+                    approval_status = 'Submitted'
+                else:
+                    approver_id = None
+                    approval_status = 'Approved'
+        else:
+            approval_status = 'Draft'
+            approver_id = None
+
         db.execute('''
             UPDATE tasks 
-            SET status = ?, running_duration = ?, last_started_at = ?
+            SET status = ?, running_duration = ?, last_started_at = ?, approval_status = ?, approver_id = ?
             WHERE id = ? AND employee_id = ?
-        ''', (new_status, new_running_duration, new_last_started_at, task_id, current_user.id))
+        ''', (new_status, new_running_duration, new_last_started_at, approval_status, approver_id, task_id, current_user.id))
         db.commit()
         flash('Task status updated.', 'success')
     else:
@@ -1649,9 +2216,10 @@ def add_subordinate_task(sub_id):
         title = request.form['title']
         description = request.form.get('description', '')
         project_id = int(request.form['project_id'])
+        category = request.form.get('category', 'Other')
         now = datetime.now().strftime('%Y-%m-%d %H:%M')
-        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
-                   (sub_id, project_id, title, description, 'Pause', now, 0, current_user.id))
+        db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id, category) VALUES (?,?,?,?,?,?,?,?,?)',
+                   (sub_id, project_id, title, description, 'Pause', now, 0, current_user.id, category))
         db.commit()
         flash('Task assigned to employee.', 'success')
         return redirect(url_for('view_subordinate_tasks', sub_id=sub_id))
@@ -1695,6 +2263,113 @@ def add_subordinate_task(sub_id):
         projects = [{'id': p['id'], 'name': f"{p['name']} (Unlimited hours)"} for p in raw_fallback]
         
     return render_template('add_subordinate_task.html', subordinate=subordinate, projects=projects)
+
+# Removed bulk submit_timesheet endpoint. Individual submissions are handled dynamically.
+
+@app.route('/tasks/approve/<int:task_id>', methods=['POST'])
+@role_required('Employee')
+def approve_task(task_id):
+    db = get_db()
+    task = db.execute('SELECT * FROM tasks WHERE id = ?', (task_id,)).fetchone()
+    if not task:
+        flash('Task not found.', 'danger')
+        return redirect(request.referrer or url_for('index'))
+        
+    allowed = False
+    link = db.execute('SELECT 1 FROM employee_managers WHERE employee_id = ? AND manager_id = ?', 
+                      (task['employee_id'], current_user.id)).fetchone()
+    if link:
+        allowed = True
+            
+    if not allowed:
+        flash('Permission denied.', 'danger')
+        return redirect(request.referrer or url_for('index'))
+        
+    db.execute('UPDATE tasks SET approval_status = "Approved", approval_comments = NULL WHERE id = ?', (task_id,))
+    db.commit()
+    flash('Task timesheet approved.', 'success')
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/tasks/reject/<int:task_id>', methods=['POST'])
+@role_required('Employee')
+def reject_task(task_id):
+    db = get_db()
+    task = db.execute('SELECT * FROM tasks WHERE id = ?', (task_id,)).fetchone()
+    if not task:
+        flash('Task not found.', 'danger')
+        return redirect(request.referrer or url_for('index'))
+        
+    allowed = False
+    link = db.execute('SELECT 1 FROM employee_managers WHERE employee_id = ? AND manager_id = ?', 
+                      (task['employee_id'], current_user.id)).fetchone()
+    if link:
+        allowed = True
+            
+    if not allowed:
+        flash('Permission denied.', 'danger')
+        return redirect(request.referrer or url_for('index'))
+        
+    comments = request.form.get('comments', '')
+    db.execute('UPDATE tasks SET approval_status = "Rejected", approval_comments = ? WHERE id = ?', (comments, task_id))
+    db.commit()
+    flash('Task timesheet rejected.', 'warning')
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/hr/reports/print')
+@role_required('HR')
+def hr_reports_print():
+    report_type = request.args.get('type')
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    category = request.args.get('category')
+    
+    if not report_type or not date_from or not date_to:
+        flash('Missing report parameters.', 'danger')
+        return redirect(url_for('hr_reports_page'))
+        
+    db = get_db()
+    rows = []
+    title_label = ""
+    
+    if report_type == 'employee':
+        employee_id = request.args.get('employee_id')
+        if not employee_id:
+            flash('Employee required.', 'danger')
+            return redirect(url_for('hr_reports_page'))
+        emp = db.execute('SELECT full_name FROM users WHERE id = ?', (employee_id,)).fetchone()
+        if not emp:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('hr_reports_page'))
+        title_label = f"Employee Report: {emp['full_name']}"
+        project_ids = request.args.getlist('project_ids')
+        rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids, category)
+    elif report_type == 'project':
+        project_id = request.args.get('project_id')
+        if project_id and project_id != '':
+            proj = db.execute('SELECT name FROM projects WHERE id = ?', (project_id,)).fetchone()
+            if not proj:
+                flash('Project not found.', 'danger')
+                return redirect(url_for('hr_reports_page'))
+            title_label = f"Project Report: {proj['name']}"
+            rows = _fetch_tasks_for_project_report(project_id, date_from, date_to, category=category)
+        else:
+            title_label = "Project Report: All Projects"
+            rows = _fetch_tasks_for_project_report(None, date_from, date_to, category=category)
+            
+    total_seconds_sum = sum(r['running_duration'] for r in rows)
+    total_hours_sum = round(total_seconds_sum / 3600.0, 2)
+    
+    return render_template(
+        'print_report.html',
+        rows=rows,
+        title_label=title_label,
+        date_from=date_from,
+        date_to=date_to,
+        category=category,
+        total_hours=total_hours_sum,
+        generated_by=current_user.full_name or current_user.username,
+        generated_on=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    )
 
 # ---------- Init ----------
 if __name__ == '__main__':

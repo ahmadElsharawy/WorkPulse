@@ -1,26 +1,33 @@
 {% extends 'base.html' %}
-{% block title %}Add Task for Subordinate{% endblock %}
+{% block title %}{{ _('add_subordinate_task') }} – WorkPulse{% endblock %}
 {% block content %}
-<h2>Add Task for {{ subordinate.full_name }} ({{ subordinate.username }})</h2>
-<form method='post'>
-  <div class='mb-3'>
-    <label class='form-label'>Title</label>
-    <input type='text' name='title' class='form-control' required>
-  </div>
-  <div class='mb-3'>
-    <label class='form-label'>Project</label>
-    <select name='project_id' class='form-select' required>
-      <option value='' disabled selected>Select Project...</option>
-      {% for proj in projects %}
-        <option value='{{ proj.id }}'>{{ proj.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class='mb-3'>
-    <label class='form-label'>Description</label>
-    <textarea name='description' class='form-control'></textarea>
-  </div>
-  <button type='submit' class='btn btn-primary'>Add Task</button>
-  <a href='{{ url_for('view_subordinate_tasks', sub_id=subordinate.id) }}' class='btn btn-secondary ms-2'>Cancel</a>
-</form>
+<div class='card p-4 mx-auto' style='max-width: 600px;'>
+  <h2 class='mb-4'>{{ _('add_subordinate_task') }} ({{ subordinate.full_name or subordinate.username }})</h2>
+  <form method='post'>
+    <div class='mb-3'>
+      <label class='form-label'>{{ _('task_title') }}</label>
+      <input type='text' name='title' class='form-control' required>
+    </div>
+    <div class='mb-3'>
+      <label class='form-label'>{{ _('projects') }}</label>
+      <select name='project_id' class='form-select' required>
+        <option value='' disabled selected>{{ _('select_project') }}...</option>
+        {% for proj in projects %}
+          <option value='{{ proj.id }}'>{{ proj.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    
+
+    <div class='mb-4'>
+      <label class='form-label'>{{ _('description') }}</label>
+      <textarea name='description' class='form-control' rows='4'></textarea>
+    </div>
+    
+    <div class='d-flex gap-2'>
+      <button type='submit' class='btn btn-primary px-4'>{{ _('add_task') }}</button>
+      <a href='{{ url_for('view_subordinate_tasks', sub_id=subordinate.id) }}' class='btn btn-secondary px-4'>{{ _('cancel') }}</a>
+    </div>
+  </form>
+</div>
 {% endblock %}

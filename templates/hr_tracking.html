@@ -16,6 +16,7 @@
   <div class="collapse show" id="filterCollapse">
     <div class="card-body">
       <form method="GET" action="{{ url_for('hr_tracking') }}">
+        <input type="hidden" name="filter_applied" value="1">
         <div class="row g-3">
           
           <!-- Employees Filter -->
@@ -104,7 +105,7 @@
           
         </div>
         <div class="d-flex justify-content-end gap-2 mt-3">
-          <a href="{{ url_for('hr_tracking') }}" class="btn btn-secondary btn-sm">Reset Filters</a>
+          <a href="{{ url_for('hr_tracking') }}?reset=1" class="btn btn-secondary btn-sm">Reset Filters</a>
           <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
         </div>
       </form>

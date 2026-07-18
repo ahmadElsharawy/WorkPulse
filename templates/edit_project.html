@@ -1,37 +1,71 @@
 {% extends 'base.html' %}
-{% block title %}Edit Project{% endblock %}
+{% block title %}{{ 'تعديل مشروع' if current_lang == 'ar' else 'Edit Project' }}{% endblock %}
 {% block content %}
 <div class='row'>
   <div class='col-md-6 offset-md-3'>
     <div class='card shadow-sm mt-4'>
       <div class='card-header bg-primary text-white'>
-        <h4 class='mb-0'>Edit Project: {{ project.name }}</h4>
+        <h4 class='mb-0'>{{ 'تعديل مشروع' if current_lang == 'ar' else 'Edit Project' }}: {{ project.name }}</h4>
       </div>
-      <div class='card-body'>
+      <div class='card-body p-4'>
         <form method='post'>
           <div class='mb-3'>
-            <label class='form-label'>Project Name</label>
+            <label class='form-label fw-bold'>{{ _('project_name') }}</label>
             <input type='text' name='name' class='form-control' value='{{ project.name }}' required>
           </div>
           <div class='mb-3'>
-            <label class='form-label'>Client</label>
+            <label class='form-label fw-bold'>{{ _('client') }}</label>
             <input type='text' name='client' class='form-control' value='{{ project.client }}' required>
           </div>
           <div class='mb-3'>
-            <label class='form-label'>Start Date <span class='text-muted small'>(Optional)</span></label>
+            <label class='form-label fw-bold'>{{ _('start_date') }} <span class='text-muted small'>(Optional)</span></label>
             <input type='date' name='start_date' class='form-control' value='{{ project.start_date or "" }}'>
           </div>
           <div class='mb-3'>
-            <label class='form-label'>End Date <span class='text-muted small'>(Optional)</span></label>
+            <label class='form-label fw-bold'>{{ _('end_date') }} <span class='text-muted small'>(Optional)</span></label>
             <input type='date' name='end_date' class='form-control' value='{{ project.end_date or "" }}'>
           </div>
-          <div class='d-flex justify-content-end'>
-            <a href='{{ url_for('hr_projects') }}' class='btn btn-secondary me-2'>Cancel</a>
-            <button type='submit' class='btn btn-primary'>Update Project</button>
+          
+          <div class='mb-4'>
+            <label class='form-label d-flex justify-content-between align-items-center fw-bold'>
+              <span>{{ _('assign_employees') }}</span>
+              <button type='button' class='btn btn-sm btn-link p-0 text-decoration-none' id='selectAllEmployeesBtn'>{{ _('select_all') }}</button>
+            </label>
+            <select name='employee_ids' id='employeeSelectMultiple' class='form-select' multiple size='6'>
+              {% for emp in employees %}
+                <option value='{{ emp.id }}' {% if emp.id in assigned_ids %}selected{% endif %}>{{ emp.full_name or emp.username }}</option>
+              {% endfor %}
+            </select>
+            <div class='form-text'>{{ 'اضغط مع الاستمرار على Ctrl لتحديد أكثر من موظف' if current_lang == 'ar' else 'Hold Ctrl (Windows) or Cmd (Mac) to select multiple.' }}</div>
+          </div>
+
+          <div class='d-flex justify-content-end gap-2'>
+            <a href='{{ url_for('hr_projects') }}' class='btn btn-secondary px-3'>{{ _('cancel') }}</a>
+            <button type='submit' class='btn btn-primary px-4'>{{ 'تحديث المشروع' if current_lang == 'ar' else 'Update Project' }}</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('selectAllEmployeesBtn')?.addEventListener('click', function() {
+    const select = document.getElementById('employeeSelectMultiple');
+    if (!select) return;
+    const options = select.options;
+    let allSelected = true;
+    for (let i = 0; i < options.length; i++) {
+        if (!options[i].selected) {
+            allSelected = false;
+            break;
+        }
+    }
+    for (let i = 0; i < options.length; i++) {
+        options[i].selected = !allSelected;
+    }
+});
+</script>
 {% endblock %}

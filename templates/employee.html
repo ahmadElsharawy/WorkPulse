@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}My Tasks – WorkPulse{% endblock %}
+{% block title %}{{ _('my_tasks') }} – WorkPulse{% endblock %}
 {% block content %}
 
 <!-- ── Page Header ── -->
-<div class='page-header'>
+<div class='page-header d-flex justify-content-between align-items-center mb-4'>
   <div>
-    <h1 class='page-title'>My Tasks</h1>
-    <p class='page-subtitle'>Manage and track your work</p>
+    <h1 class='page-title'>{{ _('my_tasks') }}</h1>
+    <p class='page-subtitle'>{{ 'إدارة وتتبع ساعات عملك اليومية' if current_lang == 'ar' else 'Manage and track your work hours' }}</p>
   </div>
   <div class='d-flex gap-2'>
     {% if subordinates %}
@@ -14,38 +14,63 @@
         <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
           <path d='M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5'/>
         </svg>
-        My Team
+        {{ _('subordinates') }}
       </a>
     {% endif %}
-    <a href='{{ url_for("add_task") }}' class='btn btn-success'>
+    <a href='{{ url_for("add_task") }}' class='btn btn-success px-3'>
       <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
         <path d='M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2'/>
       </svg>
-      Add Task
+      {{ _('add_task') }}
     </a>
   </div>
 </div>
 
+<!-- ── Charts Section ── -->
+{% if chart_projects_data %}
+<div class='row g-4 mb-4'>
+  <div class='col-md-6'>
+    <div class='card p-4 h-100 shadow-sm'>
+      <h5 class='card-title border-bottom pb-2 mb-3'>📊 {{ _('project_time_distribution') }}</h5>
+      <div style='max-height: 250px;' class='d-flex justify-content-center'>
+        <canvas id='projectTimeChart'></canvas>
+      </div>
+    </div>
+  </div>
+  <div class='col-md-6'>
+    <div class='card p-4 h-100 shadow-sm'>
+      <h5 class='card-title border-bottom pb-2 mb-3'>📈 {{ _('weekly_activity') }}</h5>
+      <div style='max-height: 250px;' class='d-flex justify-content-center'>
+        <canvas id='weeklyActivityChart'></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+
 <!-- ── My Tasks Filter Card ── -->
-<div class='card mb-4'>
-  <div class='card-header bg-dark d-flex justify-content-between align-items-center'>
-    <span>Filter My Tasks</span>
+<div class='card mb-4 shadow-sm'>
+  <div class='card-header bg-dark d-flex justify-content-between align-items-center text-white'>
+    <span>🔍 {{ 'تصفية مهامي' if current_lang == 'ar' else 'Filter My Tasks' }}</span>
     <button class='btn btn-outline-light btn-sm' type='button' data-bs-toggle='collapse' data-bs-target='#myTasksFilterCollapse'>
-      Toggle Filters
+      {{ 'طي الفلاتر' if current_lang == 'ar' else 'Toggle Filters' }}
     </button>
   </div>
   <div class='collapse show' id='myTasksFilterCollapse'>
     <div class='card-body'>
       <form method='GET' action='{{ url_for("employee_dashboard") }}'>
+        <input type="hidden" name="filter_applied" value="1">
         <div class='row g-3'>
           <!-- Projects -->
           <div class='col-md-3'>
-            <label class='form-label'>Projects</label>
+            <label class='form-label fw-bold'>{{ _('projects') }}</label>
             <div class='check-list'>
               <div class='form-check'>
                 <input class='form-check-input' type='checkbox' name='projects' value='none' id='my_proj_none'
                   {% if 'none' in selected_projects %}checked{% endif %}>
-                <label class='form-check-label text-muted fst-italic' for='my_proj_none'>No Project</label>
+                <label class='form-check-label text-muted fst-italic' for='my_proj_none'>{{ 'بدون مشروع' if current_lang == 'ar' else 'No Project' }}</label>
               </div>
               {% for proj in projects_list %}
                 <div class='form-check'>
@@ -58,27 +83,27 @@
           </div>
           <!-- Status -->
           <div class='col-md-2'>
-            <label class='form-label'>Status</label>
+            <label class='form-label fw-bold'>{{ _('status') }}</label>
             <div class='check-list'>
-              {% for status in ['Running', 'Pause', 'Finish'] %}
+              {% for status_key, status_val in [('Running', _('running')), ('Pause', _('pause')), ('Finish', _('finish'))] %}
                 <div class='form-check'>
-                  <input class='form-check-input' type='checkbox' name='statuses' value='{{ status }}' id='my_status_{{ status }}'
-                    {% if status in selected_statuses %}checked{% endif %}>
-                  <label class='form-check-label' for='my_status_{{ status }}'>{{ status }}</label>
+                  <input class='form-check-input' type='checkbox' name='statuses' value='{{ status_key }}' id='my_status_{{ status_key }}'
+                    {% if status_key in selected_statuses %}checked{% endif %}>
+                  <label class='form-check-label' for='my_status_{{ status_key }}'>{{ status_val }}</label>
                 </div>
               {% endfor %}
             </div>
           </div>
           <!-- Assigned By -->
           <div class='col-md-3'>
-            <label class='form-label'>Assigned By</label>
+            <label class='form-label fw-bold'>{{ _('assigned_to') }}</label>
             <div class='check-list'>
               {% for creator in creators_list %}
                 <div class='form-check'>
                   <input class='form-check-input' type='checkbox' name='creators' value='{{ creator.id }}' id='my_creator_{{ creator.id }}'
                     {% if creator.id in selected_creators %}checked{% endif %}>
                   <label class='form-check-label text-truncate d-block' for='my_creator_{{ creator.id }}'>
-                    {% if creator.id == current_user.id %}Self ({{ creator.full_name }}){% else %}{{ creator.full_name }}{% endif %}
+                    {% if creator.id == current_user.id %}{{ 'أنا' if current_lang == 'ar' else 'Self' }} ({{ creator.full_name }}){% else %}{{ creator.full_name }}{% endif %}
                   </label>
                 </div>
               {% endfor %}
@@ -86,15 +111,15 @@
           </div>
           <!-- Date -->
           <div class='col-md-2'>
-            <label class='form-label'>Created At</label>
+            <label class='form-label fw-bold'>{{ _('date') }}</label>
             <input type='date' class='form-control mb-2' name='created_from' value='{{ created_from }}'>
             <input type='date' class='form-control' name='created_to' value='{{ created_to }}'>
           </div>
           <!-- Actions -->
           <div class='col-md-2 d-flex align-items-end'>
             <div class='d-flex flex-column gap-2 w-100'>
-              <button type='submit' class='btn btn-primary'>Apply</button>
-              <a href='{{ url_for("employee_dashboard") }}' class='btn btn-secondary'>Reset</a>
+              <button type='submit' class='btn btn-primary w-100'>{{ _('filter') }}</button>
+              <a href='{{ url_for("employee_dashboard") }}?reset=1' class='btn btn-secondary w-100'>{{ 'إعادة تعيين' if current_lang == 'ar' else 'Reset' }}</a>
             </div>
           </div>
         </div>
@@ -110,28 +135,35 @@
   </div>
 </div>
 
-<div class='row'>
+<div class='row g-4'>
   <div class='col-lg-9 col-md-8'>
     <!-- ── My Tasks Table ── -->
-    <div class='card mb-5'>
+    <div class='card shadow-sm mb-5'>
+      <div class='card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center'>
+        <span>📋 {{ _('my_tasks') }}</span>
+      </div>
       <div class='table-responsive'>
         <table class='table mb-0 table-sortable' data-sortable>
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Project</th>
-              <th>Description</th>
-              <th>Status</th>
-              <th>Created At</th>
-              <th>Duration</th>
-              <th>Assigned By</th>
-              <th class='text-center'>Actions</th>
+              <th>{{ _('task_title') }}</th>
+              <th>{{ _('projects') }}</th>
+              <th>{{ _('status') }}</th>
+              <th>{{ _('timesheet_status') }}</th>
+              <th>{{ _('date') }}</th>
+              <th>{{ _('duration') }}</th>
+              <th>{{ _('assigned_to') }}</th>
+              <th class='text-center'>{{ _('actions') }}</th>
             </tr>
           </thead>
           <tbody>
             {% for task in tasks %}
             <tr>
-              <td><strong>{{ task.title }}</strong></td>
+              <td>
+                <div class='fw-bold'>{{ task.title }}</div>
+
+                <small class='text-muted d-block text-truncate mt-1' style='max-width:180px;' title='{{ task.description or "" }}'>{{ task.description or "" }}</small>
+              </td>
               <td>
                 {% if task.project_name %}
                   <span class='badge' style='background:#e0f2fe;color:#075985;font-weight:600;'>{{ task.project_name }}</span>
@@ -139,15 +171,33 @@
                   <span class='text-muted'>–</span>
                 {% endif %}
               </td>
-              <td class='task-desc-cell'>{{ task.description }}</td>
               <td>
                 <form action='{{ url_for("update_task_status", task_id=task.id) }}' method='post'>
-                  <select name='status' class='form-select form-select-sm' style='min-width:100px;' onchange='this.form.submit()'>
-                    <option value='Pause'   {% if task.status == 'Pause'   %}selected{% endif %}>Pause</option>
-                    <option value='Running' {% if task.status == 'Running' %}selected{% endif %}>Running</option>
-                    <option value='Finish'  {% if task.status == 'Finish'  %}selected{% endif %}>Finish</option>
+                  <select name='status' class='form-select form-select-sm' style='min-width:100px;'
+                          data-assigned-by-manager="{% if task.creator_id != current_user.id %}true{% else %}false{% endif %}"
+                          data-task-id="{{ task.id }}"
+                          data-old-status="{{ task.status }}"
+                          data-has-managers="{% if my_managers|length > 0 %}true{% else %}false{% endif %}"
+                          onchange='handleStatusChange(this)'>
+                    <option value='Pause'   {% if task.status == 'Pause'   %}selected{% endif %}>{{ _('pause') }}</option>
+                    <option value='Running' {% if task.status == 'Running' %}selected{% endif %}>{{ _('running') }}</option>
+                    <option value='Finish'  {% if task.status == 'Finish'  %}selected{% endif %}>{{ _('finish') }}</option>
                   </select>
                 </form>
+              </td>
+              <td>
+                {% if task.approval_status == 'Approved' %}
+                  <span class='badge bg-success-subtle text-success border border-success-subtle px-2 py-1' style='font-size:0.8rem;'>✅ {{ _('approve') }}</span>
+                {% elif task.approval_status == 'Submitted' %}
+                  <span class='badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1' style='font-size:0.8rem;'>⏳ {{ 'مقدم للمراجعة' if current_lang == 'ar' else 'Submitted' }}</span>
+                {% elif task.approval_status == 'Rejected' %}
+                  <span class='badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1' style='font-size:0.8rem;' title='{{ task.approval_comments or "" }}'>❌ {{ _('reject') }}</span>
+                  {% if task.approval_comments %}
+                    <small class='text-danger d-block mt-1' style='font-size:0.75rem;'>{{ task.approval_comments }}</small>
+                  {% endif %}
+                {% else %}
+                  <span class='badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1' style='font-size:0.8rem;'>📝 {{ 'مسودة' if current_lang == 'ar' else 'Draft' }}</span>
+                {% endif %}
               </td>
               <td class='text-muted' style='white-space:nowrap;font-size:.82rem;'>{{ task.created_at|datetimeformat }}</td>
               <td style='white-space:nowrap;font-family:monospace;'>
@@ -155,23 +205,27 @@
               </td>
               <td>
                 {% if task.creator_id == current_user.id %}
-                  <span class='text-muted'>Self</span>
+                  <span class='text-muted'>{{ 'أنا' if current_lang == 'ar' else 'Self' }}</span>
                 {% else %}
                   <strong>{{ task.creator_name }}</strong>
                 {% endif %}
               </td>
               <td class='text-center'>
                 <div class='d-flex justify-content-center gap-1'>
-                  <a href='{{ url_for("edit_task", task_id=task.id) }}' class='btn btn-sm btn-outline-primary py-0 px-2' style='font-size:.78rem;'>Edit</a>
-                  <form action='{{ url_for("delete_task", task_id=task.id) }}' method='post' onsubmit="return confirm('Delete this task?');">
-                    <button type='submit' class='btn btn-sm btn-outline-danger py-0 px-2' style='font-size:.78rem;'>Delete</button>
-                  </form>
+                  {% if task.approval_status != 'Approved' %}
+                    <a href='{{ url_for("edit_task", task_id=task.id) }}' class='btn btn-sm btn-outline-primary py-0 px-2' style='font-size:.78rem;'>{{ _('edit') }}</a>
+                    <form action='{{ url_for("delete_task", task_id=task.id) }}' method='post' onsubmit="return confirm('{{ 'حذف هذه المهمة؟' if current_lang == 'ar' else 'Delete this task?' }}');">
+                      <button type='submit' class='btn btn-sm btn-outline-danger py-0 px-2' style='font-size:.78rem;'>{{ _('delete') }}</button>
+                    </form>
+                  {% else %}
+                    <span class='text-muted' style='font-size:0.8rem;'>{{ 'مغلق' if current_lang == 'ar' else 'Locked' }}</span>
+                  {% endif %}
                 </div>
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan='8' class='text-center text-muted py-4'>No tasks found. <a href='{{ url_for("add_task") }}'>Add your first task →</a></td>
+              <td colspan='8' class='text-center text-muted py-4'>{{ _('no_tasks_found') }} <a href='{{ url_for("add_task") }}'>{{ 'أضف مهمتك الأولى' if current_lang == 'ar' else 'Add your first task' }} →</a></td>
             </tr>
             {% endfor %}
           </tbody>
@@ -182,35 +236,41 @@
 
   <div class='col-lg-3 col-md-4'>
     <!-- ── My Project Hour Balances ── -->
-    <div class='card mb-5'>
+    <div class='card mb-4 shadow-sm'>
       <div class='card-header bg-dark text-white fw-bold'>
-        My Project Hour Balances
+        💼 {{ 'ميزانيات مشاريعي' if current_lang == 'ar' else 'My Project Hour Balances' }}
       </div>
       <div class='card-body p-0'>
         <div class='table-responsive'>
           <table class='table table-sm align-middle mb-0' style='font-size:0.9rem;'>
             <thead>
               <tr class='table-light'>
-                <th class='ps-3'>Project</th>
-                <th class='text-end pe-3'>Remaining</th>
+                <th class='ps-3'>{{ _('projects') }}</th>
+                <th class='text-end pe-3'>{{ _('remaining') }}</th>
               </tr>
             </thead>
             <tbody>
               {% for proj in assigned_project_balances %}
               <tr>
-                <td class='ps-3 text-truncate' style='max-width: 150px;' title='{{ proj.name }}'>
+                <td class='ps-3 text-truncate' style='max-width: 130px;' title='{{ proj.name }}'>
                   <strong>{{ proj.name }}</strong>
                 </td>
                 <td class='text-end pe-3'>
                   {% if proj.allocated_hours == 0 %}
-                    <span class='badge bg-secondary px-2 py-1'>Unlimited</span>
+                    <span class='badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1'>{{ _('unlimited') }}</span>
                   {% else %}
                     {% if proj.remaining_hours < 0 %}
-                      <span class='badge bg-danger px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
-                    {% elif proj.remaining_hours < 5 %}
-                      <span class='badge bg-warning text-dark px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                      <span class='badge bg-danger px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>
+                        {{ "%.2f"|format(proj.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
+                        <span class='d-block' style='font-size:0.7rem;font-weight:normal;'>⚠️ {{ _('over_budget') }}</span>
+                      </span>
+                    {% elif proj.remaining_hours < (0.2 * proj.allocated_hours) %}
+                      <span class='badge bg-warning text-dark px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>
+                        {{ "%.2f"|format(proj.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
+                        <span class='d-block' style='font-size:0.7rem;font-weight:normal;'>⚠️ {{ _('near_limit') }}</span>
+                      </span>
                     {% else %}
-                      <span class='badge bg-success px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} hrs</span>
+                      <span class='badge bg-success px-2 py-1' title='Worked {{ "%.2f"|format(proj.allocated_hours - proj.remaining_hours) }} of {{ proj.allocated_hours }} hrs'>{{ "%.2f"|format(proj.remaining_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}</span>
                     {% endif %}
                   {% endif %}
                 </td>
@@ -218,7 +278,7 @@
               {% endfor %}
               {% if not assigned_project_balances %}
               <tr>
-                <td colspan='2' class='text-muted text-center py-3'>No projects assigned.</td>
+                <td colspan='2' class='text-muted text-center py-3'>{{ 'لا توجد مشاريع مسندة.' if current_lang == 'ar' else 'No projects assigned.' }}</td>
               </tr>
               {% endif %}
             </tbody>
@@ -229,24 +289,76 @@
   </div>
 </div>
 
-{% if subordinates %}
-<!-- ── Subordinate Tasks ── -->
-<div class='section-title'>Subordinate Tasks – Live Tracking</div>
+<!-- ── Pending Approvals Section for Subordinates (Manager View) ── -->
+{% if subordinates and pending_sub_approvals %}
+<div class='section-title mt-4 mb-3 text-warning fw-bold'>⏳ {{ 'مهام معلقة للموافقة عليها' if current_lang == 'ar' else 'Pending Subordinate Timesheets' }} ({{ pending_sub_approvals|length }})</div>
+<div class='card shadow-sm mb-5 border-warning'>
+  <div class='table-responsive'>
+    <table class='table mb-0 align-middle'>
+      <thead>
+        <tr class='table-warning'>
+          <th>{{ _('employees') }}</th>
+          <th>{{ _('task_title') }}</th>
+          <th>{{ _('projects') }}</th>
+          <th>{{ _('duration') }}</th>
+          <th class='text-center'>{{ _('actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in pending_sub_approvals %}
+        <tr>
+          <td><strong>{{ task.employee_name }}</strong></td>
+          <td>
+            <strong>{{ task.title }}</strong>
 
-<div class='card mb-4'>
-  <div class='card-header bg-dark d-flex justify-content-between align-items-center'>
-    <span>Filter Subordinate Tasks</span>
+          </td>
+          <td><span class='badge bg-info-subtle text-info border border-info-subtle'>{{ task.project_name or '–' }}</span></td>
+          <td style='font-family:monospace;'>{{ task|format_duration }}</td>
+          <td class='text-center'>
+            <div class='d-flex justify-content-center align-items-center gap-2'>
+              <!-- Approve form -->
+              <form action='{{ url_for("approve_task", task_id=task.id) }}' method='post'>
+                <button type='submit' class='btn btn-success btn-sm'>✅ {{ _('approve') }}</button>
+              </form>
+              <!-- Reject Form Button and Collapse input -->
+              <button class='btn btn-danger btn-sm' type='button' data-bs-toggle='collapse' data-bs-target='#rejectCollapse{{ task.id }}'>
+                ❌ {{ _('reject') }}
+              </button>
+            </div>
+            <div class='collapse mt-2' id='rejectCollapse{{ task.id }}'>
+              <form action='{{ url_for("reject_task", task_id=task.id) }}' method='post' class='p-2 bg-light border rounded'>
+                <input type='text' name='comments' class='form-control form-control-sm mb-1' placeholder='{{ _('comments_optional') }}' required>
+                <button type='submit' class='btn btn-danger btn-sm w-100'>{{ 'تأكيد الرفض' if current_lang == 'ar' else 'Confirm Reject' }}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if subordinates %}
+<!-- ── Subordinate Tasks Live Tracking ── -->
+<div class='section-title mt-5'>🟢 {{ _('subordinate_tasks') }} – {{ 'متابعة حية' if current_lang == 'ar' else 'Live Tracking' }}</div>
+
+<div class='card mb-4 shadow-sm'>
+  <div class='card-header bg-dark d-flex justify-content-between align-items-center text-white'>
+    <span>🔍 {{ 'تصفية مهام المرؤوسين' if current_lang == 'ar' else 'Filter Subordinate Tasks' }}</span>
     <button class='btn btn-outline-light btn-sm' type='button' data-bs-toggle='collapse' data-bs-target='#subTasksFilterCollapse'>
-      Toggle Filters
+      {{ 'طي الفلاتر' if current_lang == 'ar' else 'Toggle Filters' }}
     </button>
   </div>
   <div class='collapse show' id='subTasksFilterCollapse'>
     <div class='card-body'>
       <form method='GET' action='{{ url_for("employee_dashboard") }}'>
+        <input type="hidden" name="filter_applied" value="1">
         <div class='row g-3'>
           <!-- Employees -->
           <div class='col-md-2'>
-            <label class='form-label'>Employees</label>
+            <label class='form-label fw-bold'>{{ _('employees') }}</label>
             <div class='check-list'>
               {% for emp in subordinates %}
                 <div class='form-check'>
@@ -259,12 +371,12 @@
           </div>
           <!-- Projects -->
           <div class='col-md-3'>
-            <label class='form-label'>Projects</label>
+            <label class='form-label fw-bold'>{{ _('projects') }}</label>
             <div class='check-list'>
               <div class='form-check'>
                 <input class='form-check-input' type='checkbox' name='sub_projects' value='none' id='sub_proj_none'
                   {% if 'none' in selected_sub_projects %}checked{% endif %}>
-                <label class='form-check-label text-muted fst-italic' for='sub_proj_none'>No Project</label>
+                <label class='form-check-label text-muted fst-italic' for='sub_proj_none'>{{ 'بدون مشروع' if current_lang == 'ar' else 'No Project' }}</label>
               </div>
               {% for proj in projects_list %}
                 <div class='form-check'>
@@ -277,27 +389,27 @@
           </div>
           <!-- Status -->
           <div class='col-md-2'>
-            <label class='form-label'>Status</label>
+            <label class='form-label fw-bold'>{{ _('status') }}</label>
             <div class='check-list'>
-              {% for status in ['Running', 'Pause', 'Finish'] %}
+              {% for status_key, status_val in [('Running', _('running')), ('Pause', _('pause')), ('Finish', _('finish'))] %}
                 <div class='form-check'>
-                  <input class='form-check-input' type='checkbox' name='sub_statuses' value='{{ status }}' id='sub_status_{{ status }}'
-                    {% if status in selected_sub_statuses %}checked{% endif %}>
-                  <label class='form-check-label' for='sub_status_{{ status }}'>{{ status }}</label>
+                  <input class='form-check-input' type='checkbox' name='sub_statuses' value='{{ status_key }}' id='sub_status_{{ status_key }}'
+                    {% if status_key in selected_sub_statuses %}checked{% endif %}>
+                  <label class='form-check-label' for='sub_status_{{ status_key }}'>{{ status_val }}</label>
                 </div>
               {% endfor %}
             </div>
           </div>
           <!-- Assigned By -->
           <div class='col-md-2'>
-            <label class='form-label'>Assigned By</label>
+            <label class='form-label fw-bold'>{{ _('assigned_to') }}</label>
             <div class='check-list'>
               {% for creator in sub_creators_list %}
                 <div class='form-check'>
                   <input class='form-check-input' type='checkbox' name='sub_creators' value='{{ creator.id }}' id='sub_creator_{{ creator.id }}'
                     {% if creator.id in selected_sub_creators %}checked{% endif %}>
                   <label class='form-check-label text-truncate d-block' for='sub_creator_{{ creator.id }}'>
-                    {% if creator.id == current_user.id %}Self ({{ creator.full_name }}){% else %}{{ creator.full_name }}{% endif %}
+                    {% if creator.id == current_user.id %}{{ 'أنا' if current_lang == 'ar' else 'Self' }} ({{ creator.full_name }}){% else %}{{ creator.full_name }}{% endif %}
                   </label>
                 </div>
               {% endfor %}
@@ -305,15 +417,15 @@
           </div>
           <!-- Date -->
           <div class='col-md-1'>
-            <label class='form-label'>Date</label>
+            <label class='form-label fw-bold'>{{ _('date') }}</label>
             <input type='date' class='form-control mb-2' name='sub_created_from' value='{{ sub_created_from }}'>
             <input type='date' class='form-control' name='sub_created_to' value='{{ sub_created_to }}'>
           </div>
           <!-- Actions -->
           <div class='col-md-2 d-flex align-items-end'>
             <div class='d-flex flex-column gap-2 w-100'>
-              <button type='submit' class='btn btn-primary'>Apply</button>
-              <a href='{{ url_for("employee_dashboard") }}' class='btn btn-secondary'>Reset</a>
+              <button type='submit' class='btn btn-primary w-100'>{{ _('filter') }}</button>
+              <a href='{{ url_for("employee_dashboard") }}?reset=1' class='btn btn-secondary w-100'>{{ 'إعادة تعيين' if current_lang == 'ar' else 'Reset' }}</a>
             </div>
           </div>
         </div>
@@ -329,19 +441,19 @@
 
 <div id='subordinate-live-tasks-wrapper'>
   {% if subordinate_tasks %}
-  <div class='card'>
+  <div class='card shadow-sm mb-5'>
     <div class='table-responsive'>
       <table class='table mb-0 table-sortable' data-sortable>
         <thead>
           <tr>
-            <th>Employee</th>
-            <th>Project</th>
-            <th>Task</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th>Created At</th>
-            <th>Duration</th>
-            <th>Assigned By</th>
+            <th>{{ _('employees') }}</th>
+            <th>{{ _('projects') }}</th>
+            <th>{{ _('task_title') }}</th>
+            <th>{{ _('status') }}</th>
+            <th>{{ _('timesheet_status') }}</th>
+            <th>{{ _('date') }}</th>
+            <th>{{ _('duration') }}</th>
+            <th>{{ _('assigned_to') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -355,19 +467,33 @@
                 <span class='text-muted'>–</span>
               {% endif %}
             </td>
-            <td>{{ task.title }}</td>
-            <td class='task-desc-cell'>{{ task.description }}</td>
+            <td>
+              <strong>{{ task.title }}</strong>
+
+              <small class='text-muted d-block text-truncate mt-1' style='max-width:180px;'>{{ task.description or "" }}</small>
+            </td>
             <td>
               {% if task.status == 'Running' %}
-                <span class='badge badge-running'>
-                  <span class='spinner-grow spinner-grow-sm me-1' style='width:.45rem;height:.45rem;'></span>Running
+                <span class='badge badge-running text-white'>
+                  <span class='spinner-grow spinner-grow-sm me-1' style='width:.45rem;height:.45rem;'></span>{{ _('running') }}
                 </span>
               {% elif task.status == 'Pause' %}
-                <span class='badge badge-pause'>Pause</span>
+                <span class='badge badge-pause text-dark'>{{ _('pause') }}</span>
               {% elif task.status == 'Finish' %}
-                <span class='badge badge-finish'>Finish</span>
+                <span class='badge badge-finish text-white'>{{ _('finish') }}</span>
               {% else %}
                 <span class='badge bg-secondary'>{{ task.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if task.approval_status == 'Approved' %}
+                <span class='badge bg-success-subtle text-success border border-success-subtle px-2 py-1'>✅ {{ _('approve') }}</span>
+              {% elif task.approval_status == 'Submitted' %}
+                <span class='badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1'>⏳ {{ 'مقدم' if current_lang == 'ar' else 'Submitted' }}</span>
+              {% elif task.approval_status == 'Rejected' %}
+                <span class='badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1' title='{{ task.approval_comments or "" }}'>❌ {{ _('reject') }}</span>
+              {% else %}
+                <span class='badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1'>📝 {{ 'مسودة' if current_lang == 'ar' else 'Draft' }}</span>
               {% endif %}
             </td>
             <td class='text-muted' style='font-size:.82rem;white-space:nowrap;'>{{ task.created_at|datetimeformat }}</td>
@@ -377,7 +503,7 @@
             </td>
             <td>
               {% if task.creator_id == current_user.id %}
-                <span class='text-muted'>Self</span>
+                <span class='text-muted'>{{ 'أنا' if current_lang == 'ar' else 'Self' }}</span>
               {% else %}
                 <strong>{{ task.creator_name }}</strong>
               {% endif %}
@@ -389,8 +515,8 @@
     </div>
   </div>
   {% else %}
-    <div class='card'>
-      <div class='card-body text-center text-muted py-4'>No tasks found for your subordinates.</div>
+    <div class='card shadow-sm mb-5'>
+      <div class='card-body text-center text-muted py-4'>{{ 'لا توجد مهام للمرؤوسين تطابق هذه الفلاتر.' if current_lang == 'ar' else 'No tasks found for your subordinates.' }}</div>
     </div>
   {% endif %}
 </div>
@@ -398,12 +524,45 @@
 
 {% endblock %}
 
+{% block modal %}
+<!-- Bootstrap Modal for Approver Selection -->
+<div class="modal fade" id="selectApproverModal" tabindex="-1" aria-labelledby="selectApproverModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="selectApproverModalLabel">
+          ⚙️ {{ 'اختيار مدير للاعتماد' if current_lang == 'ar' else 'Select Task Approver' }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="approverSelectionForm" method="POST">
+        <div class="modal-body py-4">
+          <p class="text-muted mb-3" style="font-size:0.92rem;line-height:1.6;">
+            {{ 'يرجى اختيار المدير الذي ترغب في إرسال المهمة إليه لاعتماد ساعات العمل الخاصة بك، أو اختر "لا يتطلب موافقة" للموافقة الفورية عليها.' if current_lang == 'ar' else 'Please select the manager you would like to route this task to for hours approval, or choose "No approval required" for immediate approval.' }}
+          </p>
+          <div class="mb-2">
+            <label for="modalApproverSelect" class="form-label fw-bold">{{ 'المدير المعتمد' if current_lang == 'ar' else 'Approving Manager' }}</label>
+            <select name="approver_id" id="modalApproverSelect" class="form-select">
+              <option value="0">{{ 'لا يتطلب موافقة من مدير' if current_lang == 'ar' else 'No approval required' }}</option>
+              {% for mgr in my_managers %}
+                <option value="{{ mgr.id }}">{{ mgr.full_name or mgr.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <input type="hidden" name="status" value="Finish">
+        </div>
+        <div class="modal-footer bg-light border-0">
+          <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">{{ 'إلغاء' if current_lang == 'ar' else 'Cancel' }}</button>
+          <button type="submit" class="btn btn-primary px-4">{{ 'تأكيد وإرسال' if current_lang == 'ar' else 'Confirm & Send' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
 {% block extra_js %}
 <script>
-function confirmStatusChange(selectElement) {
-  selectElement.form.submit();
-}
-
 document.addEventListener('DOMContentLoaded', function() {
   function updateTimers() {
     const now = new Date();
@@ -417,7 +576,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const h = Math.floor(totalSeconds / 3600);
       const m = Math.floor((totalSeconds % 3600) / 60);
       const s = totalSeconds % 60;
-      el.textContent = (h > 0 ? h + 'h ' : '') + (m > 0 ? m + 'm ' : '') + s + 's';
+      
+      const lang = '{{ current_lang }}';
+      if (lang === 'ar') {
+        el.textContent = (h > 0 ? h + 'س ' : '') + (m > 0 ? m + 'د ' : '') + s + 'ث';
+      } else {
+        el.textContent = (h > 0 ? h + 'h ' : '') + (m > 0 ? m + 'm ' : '') + s + 's';
+      }
     });
   }
 
@@ -435,8 +600,100 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   setInterval(updateTimers, 1000);
-  setInterval(pollSubordinateTasks, 5000);
+  {% if subordinates %}
+  setInterval(pollSubordinateTasks, 7000);
+  {% endif %}
   updateTimers();
+
+  let activeStatusSelect = null;
+  
+  window.handleStatusChange = function(selectEl) {
+    const val = selectEl.value;
+    const taskId = selectEl.getAttribute('data-task-id');
+    const assignedByManager = selectEl.getAttribute('data-assigned-by-manager') === 'true';
+    const hasManagers = selectEl.getAttribute('data-has-managers') === 'true';
+    
+    if (val === 'Finish') {
+      if (assignedByManager || !hasManagers) {
+        selectEl.form.submit();
+      } else {
+        activeStatusSelect = selectEl;
+        const modalEl = document.getElementById('selectApproverModal');
+        const modalForm = document.getElementById('approverSelectionForm');
+        modalForm.action = `/employee/task/${taskId}/update_status`;
+        
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    } else {
+      selectEl.form.submit();
+    }
+  };
+
+  const modalEl = document.getElementById('selectApproverModal');
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      if (activeStatusSelect) {
+        activeStatusSelect.value = activeStatusSelect.getAttribute('data-old-status');
+        activeStatusSelect = null;
+      }
+    });
+  }
+
+  // Draw Charts
+  {% if chart_projects_data %}
+  const projCtx = document.getElementById('projectTimeChart').getContext('2d');
+  new Chart(projCtx, {
+      type: 'doughnut',
+      data: {
+          labels: {{ chart_projects_labels|tojson }},
+          datasets: [{
+              data: {{ chart_projects_data|tojson }},
+              backgroundColor: ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6b7280'],
+              borderWidth: 1
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+              legend: {
+                  position: 'bottom',
+                  labels: { boxWidth: 12, padding: 15 }
+              }
+          }
+      }
+  });
+
+  const weeklyCtx = document.getElementById('weeklyActivityChart').getContext('2d');
+  new Chart(weeklyCtx, {
+      type: 'line',
+      data: {
+          labels: {{ chart_weekly_labels|tojson }},
+          datasets: [{
+              label: "{{ 'ساعات العمل' if current_lang == 'ar' else 'Hours worked' }}",
+              data: {{ chart_weekly_data|tojson }},
+              borderColor: '#4f46e5',
+              backgroundColor: 'rgba(79, 70, 229, 0.1)',
+              tension: 0.3,
+              fill: true,
+              borderWidth: 2,
+              pointBackgroundColor: '#4f46e5'
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+              y: {
+                  beginAtZero: true,
+                  title: { display: true, text: "{{ 'الساعات' if current_lang == 'ar' else 'Hours' }}" }
+              }
+          }
+      }
+  });
+  {% endif %}
 });
 </script>
 {% endblock %}

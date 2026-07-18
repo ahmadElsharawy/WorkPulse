@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}HR Reports – WorkPulse{% endblock %}
+{% block title %}{{ _('hr_reports') }} – WorkPulse{% endblock %}
 {% block content %}
 
-<div class='page-header'>
+<div class='page-header mb-4'>
   <div>
-    <h1 class='page-title'>HR Reporting</h1>
-    <p class='page-subtitle'>Generate and export detailed Excel reports</p>
+    <h1 class='page-title'>{{ _('hr_reports') }}</h1>
+    <p class='page-subtitle'>{{ 'إنشاء وتصدير تقارير مفصلة للموظفين والمشاريع' if current_lang == 'ar' else 'Generate and export detailed timesheet reports' }}</p>
   </div>
 </div>
 
@@ -17,7 +17,7 @@
       <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
         <path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4'/>
       </svg>
-      Employee Report
+      {{ 'تقرير الموظفين' if current_lang == 'ar' else 'Employee Report' }}
     </button>
   </li>
   <li class='nav-item' role='presentation'>
@@ -26,7 +26,7 @@
       <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
         <path d='M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v8A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5m1.886 6.914L15 7.151V12.5a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V7.15l6.614 1.764a1.5 1.5 0 0 0 .772 0zM1.5 4h13a.5.5 0 0 1 .5.5v1.616L8.129 7.948a.5.5 0 0 1-.258 0L1 6.116V4.5a.5.5 0 0 1 .5-.5'/>
       </svg>
-      Project Report
+      {{ 'تقرير المشاريع' if current_lang == 'ar' else 'Project Report' }}
     </button>
   </li>
 </ul>
@@ -34,45 +34,50 @@
 <div class='tab-content' id='reportTabsContent'>
   <!-- ── Employee Report Tab ── -->
   <div class='tab-pane fade show active' id='employee-report' role='tabpanel'>
-    <div class='card'>
-      <div class='card-header bg-dark'>Employee Report Filters</div>
+    <div class='card shadow-sm'>
+      <div class='card-header bg-dark text-white fw-bold'>{{ 'فلاتر تقرير الموظف' if current_lang == 'ar' else 'Employee Report Filters' }}</div>
       <div class='card-body p-4'>
         <form id='employeeReportForm' class='row g-3'>
-          <div class='col-md-4'>
-            <label class='form-label' for='employeeSelect'>Employee <span class='text-danger'>*</span></label>
+          <div class='col-md-3'>
+            <label class='form-label fw-bold' for='employeeSelect'>{{ _('employees') }} <span class='text-danger'>*</span></label>
             <select class='form-select' id='employeeSelect' name='employee_id' required>
-              <option value='' disabled selected>Select employee…</option>
+              <option value='' disabled selected>{{ 'اختر موظفاً...' if current_lang == 'ar' else 'Select employee…' }}</option>
               {% for emp in employees %}
-                <option value='{{ emp.id }}'>{{ emp.full_name }}</option>
+                <option value='{{ emp.id }}'>{{ emp.full_name or emp.username }}</option>
               {% endfor %}
             </select>
           </div>
+
           <div class='col-md-3'>
-            <label class='form-label' for='dateFrom'>Date From <span class='text-danger'>*</span></label>
+            <label class='form-label fw-bold' for='dateFrom'>{{ _('from') }} <span class='text-danger'>*</span></label>
             <input type='text' class='form-control' id='dateFrom' name='date_from' placeholder='YYYY-MM-DD' required>
           </div>
           <div class='col-md-3'>
-            <label class='form-label' for='dateTo'>Date To <span class='text-danger'>*</span></label>
+            <label class='form-label fw-bold' for='dateTo'>{{ _('to') }} <span class='text-danger'>*</span></label>
             <input type='text' class='form-control' id='dateTo' name='date_to' placeholder='YYYY-MM-DD' required>
-          </div>
-          <div class='col-md-2 d-flex align-items-end'>
-            <button type='button' class='btn btn-export w-100 py-2' id='exportEmployeeBtn'>
-              <svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
-                <path d='M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5'/>
-                <path d='M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z'/>
-              </svg>
-              Export Excel
-            </button>
           </div>
 
           <!-- Optional projects multi-select -->
-          <div class='col-md-6'>
-            <label class='form-label' for='projectSelect'>Projects Filter <span class='text-muted fw-normal'>(optional – hold Ctrl for multi)</span></label>
-            <select class='form-select' id='projectSelect' name='project_ids' multiple size='5'>
+          <div class='col-md-8'>
+            <label class='form-label fw-bold' for='projectSelect'>{{ _('projects') }} <span class='text-muted fw-normal'>({{ 'اختياري – اضغط مع الاستمرار على Ctrl لتحديد متعدد' if current_lang == 'ar' else 'optional – hold Ctrl for multi' }})</span></label>
+            <select class='form-select' id='projectSelect' name='project_ids' multiple size='4'>
               {% for proj in projects %}
                 <option value='{{ proj.id }}'>{{ proj.name }}</option>
               {% endfor %}
             </select>
+          </div>
+          
+          <div class='col-md-4 d-flex align-items-end gap-2'>
+            <button type='button' class='btn btn-export py-2 px-3 shadow-sm' id='exportEmployeeBtn'>
+              <svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
+                <path d='M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5'/>
+                <path d='M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z'/>
+              </svg>
+              {{ _('export_excel') }}
+            </button>
+            <button type='button' class='btn btn-primary py-2 px-3 shadow-sm' id='printEmployeeBtn'>
+              🖨️ {{ _('print_report') }}
+            </button>
           </div>
         </form>
       </div>
@@ -81,34 +86,39 @@
 
   <!-- ── Project Report Tab ── -->
   <div class='tab-pane fade' id='project-report' role='tabpanel'>
-    <div class='card'>
-      <div class='card-header bg-dark'>Project Report Filters</div>
+    <div class='card shadow-sm'>
+      <div class='card-header bg-dark text-white fw-bold'>{{ 'فلاتر تقرير المشروع' if current_lang == 'ar' else 'Project Report Filters' }}</div>
       <div class='card-body p-4'>
         <form id='projectReportForm' class='row g-3'>
-          <div class='col-md-4'>
-            <label class='form-label' for='projectSelectReport'>Project <span class='text-muted fw-normal'>(optional)</span></label>
+          <div class='col-md-3'>
+            <label class='form-label fw-bold' for='projectSelectReport'>{{ _('projects') }} <span class='text-muted fw-normal'>({{ 'اختياري' if current_lang == 'ar' else 'optional' }})</span></label>
             <select class='form-select' id='projectSelectReport' name='project_id'>
-              <option value='' selected>All Projects</option>
+              <option value='' selected>{{ 'كل المشاريع' if current_lang == 'ar' else 'All Projects' }}</option>
               {% for proj in projects %}
                 <option value='{{ proj.id }}'>{{ proj.name }}</option>
               {% endfor %}
             </select>
           </div>
+
           <div class='col-md-3'>
-            <label class='form-label' for='projDateFrom'>Date From <span class='text-danger'>*</span></label>
+            <label class='form-label fw-bold' for='projDateFrom'>{{ _('from') }} <span class='text-danger'>*</span></label>
             <input type='text' class='form-control' id='projDateFrom' name='date_from' placeholder='YYYY-MM-DD' required>
           </div>
           <div class='col-md-3'>
-            <label class='form-label' for='projDateTo'>Date To <span class='text-danger'>*</span></label>
+            <label class='form-label fw-bold' for='projDateTo'>{{ _('to') }} <span class='text-danger'>*</span></label>
             <input type='text' class='form-control' id='projDateTo' name='date_to' placeholder='YYYY-MM-DD' required>
           </div>
-          <div class='col-md-2 d-flex align-items-end'>
-            <button type='button' class='btn btn-export w-100 py-2' id='exportProjectBtn'>
+          
+          <div class='col-12 d-flex justify-content-end gap-2 mt-4'>
+            <button type='button' class='btn btn-export py-2 px-3 shadow-sm' id='exportProjectBtn'>
               <svg xmlns='http://www.w3.org/2000/svg' width='15' height='15' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
                 <path d='M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5'/>
                 <path d='M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z'/>
               </svg>
-              Export Excel
+              {{ _('export_excel') }}
+            </button>
+            <button type='button' class='btn btn-primary py-2 px-3 shadow-sm' id='printProjectBtn'>
+              🖨️ {{ _('print_report') }}
             </button>
           </div>
         </form>

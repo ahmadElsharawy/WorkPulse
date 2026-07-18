@@ -1,24 +1,24 @@
 {% extends 'base.html' %}
-{% block title %}HR Dashboard – WorkPulse{% endblock %}
+{% block title %}{{ _('dashboard') }} – WorkPulse{% endblock %}
 {% block content %}
 
 <!-- Page Header -->
-<div class='page-header'>
+<div class='page-header d-flex justify-content-between align-items-center mb-4'>
   <div>
-    <h1 class='page-title'>HR Dashboard</h1>
-    <p class='page-subtitle'>Company overview &amp; live task monitoring</p>
+    <h1 class='page-title'>{{ _('dashboard') }}</h1>
+    <p class='page-subtitle'>{{ 'نظرة عامة على الشركة والمتابعة الفورية' if current_lang == 'ar' else 'Company overview & live task monitoring' }}</p>
   </div>
-  <span class='nav-role-badge' style='font-size:.8rem;padding:.35rem .85rem;'>Administrator Panel</span>
+  <span class='nav-role-badge' style='font-size:.8rem;padding:.35rem .85rem;'>{{ 'لوحة الإدارة' if current_lang == 'ar' else 'Administrator Panel' }}</span>
 </div>
 
 <!-- ── Metric Cards ── -->
-<div id='metrics-wrapper' class='row g-4 mb-5'>
+<div id='metrics-wrapper' class='row g-4 mb-4'>
   <div class='col-md-4'>
-    <div class='card metric-card metric-card-employees text-white'>
+    <div class='card metric-card metric-card-employees text-white shadow-sm'>
       <div class='card-body d-flex align-items-center justify-content-between p-4'>
         <div>
-          <p class='text-uppercase mb-1' style='font-size:.72rem;letter-spacing:.1em;opacity:.8;font-weight:700;'>Total Employees</p>
-          <div class='metric-number' id='cnt-employees' data-count-up='{{ total_employees }}'>{{ total_employees }}</div>
+          <p class='text-uppercase mb-1' style='font-size:.72rem;letter-spacing:.1em;opacity:.8;font-weight:700;'>{{ _('employees') }}</p>
+          <div class='metric-number' id='cnt-employees'>{{ total_employees }}</div>
         </div>
         <div class='icon-wrap'>
           <svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' fill='currentColor' viewBox='0 0 16 16'>
@@ -30,11 +30,11 @@
   </div>
 
   <div class='col-md-4'>
-    <div class='card metric-card metric-card-projects text-white'>
+    <div class='card metric-card metric-card-projects text-white shadow-sm'>
       <div class='card-body d-flex align-items-center justify-content-between p-4'>
         <div>
-          <p class='text-uppercase mb-1' style='font-size:.72rem;letter-spacing:.1em;opacity:.8;font-weight:700;'>Total Projects</p>
-          <div class='metric-number' id='cnt-projects' data-count-up='{{ total_projects }}'>{{ total_projects }}</div>
+          <p class='text-uppercase mb-1' style='font-size:.72rem;letter-spacing:.1em;opacity:.8;font-weight:700;'>{{ _('projects') }}</p>
+          <div class='metric-number' id='cnt-projects'>{{ total_projects }}</div>
         </div>
         <div class='icon-wrap'>
           <svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' fill='currentColor' viewBox='0 0 16 16'>
@@ -46,11 +46,11 @@
   </div>
 
   <div class='col-md-4'>
-    <div class='card metric-card metric-card-tasks text-white'>
+    <div class='card metric-card metric-card-tasks text-white shadow-sm'>
       <div class='card-body d-flex align-items-center justify-content-between p-4'>
         <div>
-          <p class='text-uppercase mb-1' style='font-size:.72rem;letter-spacing:.1em;opacity:.8;font-weight:700;'>Active Tasks</p>
-          <div class='metric-number' id='cnt-tasks' data-count-up='{{ active_tasks }}'>{{ active_tasks }}</div>
+          <p class='text-uppercase mb-1' style='font-size:.72rem;letter-spacing:.1em;opacity:.8;font-weight:700;'>{{ 'المهام النشطة حالياً' if current_lang == 'ar' else 'Active Tasks' }}</p>
+          <div class='metric-number' id='cnt-tasks'>{{ active_tasks }}</div>
         </div>
         <div class='icon-wrap'>
           <svg xmlns='http://www.w3.org/2000/svg' width='26' height='26' fill='currentColor' viewBox='0 0 16 16'>
@@ -63,25 +63,88 @@
   </div>
 </div>
 
+<!-- ── Charts Section ── -->
+{% if hr_chart_projects_data %}
+<div class='row g-4 mb-5'>
+  <div class='col-md-6'>
+    <div class='card p-4 h-100 shadow-sm'>
+      <h5 class='card-title border-bottom pb-2 mb-3'>📊 {{ _('project_time_distribution') }}</h5>
+      <div style='max-height: 250px;' class='d-flex justify-content-center'>
+        <canvas id='hrProjectTimeChart'></canvas>
+      </div>
+    </div>
+  </div>
+  <div class='col-md-6'>
+    <div class='card p-4 h-100 shadow-sm'>
+      <h5 class='card-title border-bottom pb-2 mb-3'>🏆 {{ _('top_employees') }}</h5>
+      <div style='max-height: 250px;' class='d-flex justify-content-center'>
+        <canvas id='hrTopEmployeesChart'></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Pending Approvals Section ── -->
+{% if pending_approvals %}
+<div class='section-title text-warning fw-bold mt-4 mb-3'>⏳ {{ _('pending_approvals') }} ({{ pending_approvals|length }})</div>
+<div class='card shadow-sm border-warning mb-5'>
+  <div class='table-responsive'>
+    <table class='table mb-0 align-middle'>
+      <thead>
+        <tr class='table-warning'>
+          <th>{{ _('employees') }}</th>
+          <th>{{ _('task_title') }}</th>
+          <th>{{ _('projects') }}</th>
+          <th>{{ _('duration') }}</th>
+          <th>{{ 'المدير المعتمد' if current_lang == 'ar' else 'Assigned Approver' }}</th>
+          <th>{{ 'معلقة منذ' if current_lang == 'ar' else 'Pending Since' }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in pending_approvals %}
+        <tr>
+          <td><strong>{{ task.employee_name }}</strong></td>
+          <td>
+            <strong>{{ task.title }}</strong>
+
+          </td>
+          <td><span class='badge bg-info-subtle text-info border border-info-subtle'>{{ task.project_name or '–' }}</span></td>
+          <td style='font-family:monospace;'>{{ task|format_duration }}</td>
+          <td>
+            <span class='badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1'>{{ task.approver_name }}</span>
+          </td>
+          <td>
+            <span class='text-danger fw-bold' style='font-size:0.9rem;'>{{ task.pending_since }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <!-- ── Live Summary ── -->
 <div class='mb-5'>
-  <div class='section-title'>All Employee Tasks – Live Summary</div>
+  <div class='section-title'>📊 {{ 'حالة عمل الموظفين حالياً' if current_lang == 'ar' else 'All Employee Tasks – Live Summary' }}</div>
 
   <!-- Filter Card -->
-  <div class='card mb-4'>
-    <div class='card-header bg-dark d-flex justify-content-between align-items-center'>
-      <span>Filters</span>
+  <div class='card mb-4 shadow-sm'>
+    <div class='card-header bg-dark d-flex justify-content-between align-items-center text-white'>
+      <span>🔍 {{ _('filter') }}</span>
       <button class='btn btn-outline-light btn-sm' type='button' data-bs-toggle='collapse' data-bs-target='#summaryFilterCollapse'>
-        Toggle Filters
+        {{ 'طي الفلاتر' if current_lang == 'ar' else 'Toggle Filters' }}
       </button>
     </div>
     <div class='collapse show' id='summaryFilterCollapse'>
       <div class='card-body'>
         <form method='GET' action='{{ url_for('hr_dashboard') }}'>
+          <input type="hidden" name="filter_applied" value="1">
           <div class='row g-3'>
             <!-- Employee Filter -->
             <div class='col-md-4'>
-              <label class='form-label'>Employee</label>
+              <label class='form-label fw-bold'>{{ _('employees') }}</label>
               <div class='check-list'>
                 {% for emp in employees_list %}
                   <div class='form-check'>
@@ -94,28 +157,28 @@
             </div>
             <!-- Status Filter -->
             <div class='col-md-3'>
-              <label class='form-label'>Status</label>
+              <label class='form-label fw-bold'>{{ _('status') }}</label>
               <div class='check-list'>
-                {% for status in ['Running', 'Pause', 'Finish', 'Not Work'] %}
+                {% for status_key, status_val in [('Running', _('running')), ('Pause', _('pause')), ('Finish', _('finish')), ('Not Work', 'لا يعمل حالياً' if current_lang == 'ar' else 'Not Work')] %}
                   <div class='form-check'>
-                    <input class='form-check-input' type='checkbox' name='sum_statuses' value='{{ status }}' id='sum_status_{{ status }}'
-                      {% if status in selected_sum_statuses %}checked{% endif %}>
-                    <label class='form-check-label' for='sum_status_{{ status }}'>{{ status }}</label>
+                    <input class='form-check-input' type='checkbox' name='sum_statuses' value='{{ status_key }}' id='sum_status_{{ status_key }}'
+                      {% if status_key in selected_sum_statuses %}checked{% endif %}>
+                    <label class='form-check-label' for='sum_status_{{ status_key }}'>{{ status_val }}</label>
                   </div>
                 {% endfor %}
               </div>
             </div>
             <!-- Date Filter -->
             <div class='col-md-3'>
-              <label class='form-label'>Created At</label>
+              <label class='form-label fw-bold'>{{ _('date') }}</label>
               <input type='date' class='form-control mb-2' name='summary_created_from' value='{{ request.args.get("summary_created_from", "") }}'>
               <input type='date' class='form-control' name='summary_created_to' value='{{ request.args.get("summary_created_to", "") }}'>
             </div>
             <!-- Actions -->
             <div class='col-md-2 d-flex align-items-end'>
               <div class='d-flex flex-column gap-2 w-100'>
-                <button type='submit' class='btn btn-primary'>Apply</button>
-                <a href='{{ url_for("hr_dashboard") }}' class='btn btn-secondary'>Reset</a>
+                <button type='submit' class='btn btn-primary w-100'>{{ _('filter') }}</button>
+                <a href='{{ url_for("hr_dashboard") }}?reset=1' class='btn btn-secondary w-100'>{{ 'إعادة تعيين' if current_lang == 'ar' else 'Reset' }}</a>
               </div>
             </div>
           </div>
@@ -125,15 +188,15 @@
   </div>
 
   <!-- Summary Table -->
-  <div id='summary-wrapper' class='card'>
+  <div id='summary-wrapper' class='card shadow-sm'>
     <div class='table-responsive'>
       <table class='table mb-0 table-sortable' data-sortable>
         <thead>
           <tr>
-            <th>Employee Name</th>
-            <th class='text-center'>Running</th>
-            <th class='text-center'>Pause</th>
-            <th class='text-center'>Finish</th>
+            <th>{{ _('full_name') }}</th>
+            <th class='text-center'>{{ _('running') }}</th>
+            <th class='text-center'>{{ _('pause') }}</th>
+            <th class='text-center'>{{ _('finish') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -141,16 +204,16 @@
           <tr>
             <td><strong>{{ sum.employee_name }}</strong></td>
             {% if sum.running_cnt == 0 %}
-              <td class='text-center'><span class='badge badge-notwork'>Not Work</span></td>
+              <td class='text-center'><span class='badge bg-secondary-subtle text-secondary border px-2 py-1'>{{ 'لا يعمل' if current_lang == 'ar' else 'Not Work' }}</span></td>
             {% else %}
-              <td class='text-center'><span class='badge badge-running'>{{ sum.running_cnt }}</span></td>
+              <td class='text-center'><span class='badge badge-running text-white px-2 py-1'>{{ sum.running_cnt }}</span></td>
             {% endif %}
-            <td class='text-center'><span class='badge badge-pause'>{{ sum.pause_cnt }}</span></td>
-            <td class='text-center'><span class='badge badge-finish'>{{ sum.finish_cnt }}</span></td>
+            <td class='text-center'><span class='badge badge-pause text-dark px-2 py-1'>{{ sum.pause_cnt }}</span></td>
+            <td class='text-center'><span class='badge badge-finish text-white px-2 py-1'>{{ sum.finish_cnt }}</span></td>
           </tr>
           {% else %}
           <tr>
-            <td colspan='4' class='text-center text-muted py-4'>No data matches the selected filters.</td>
+            <td colspan='4' class='text-center text-muted py-4'>{{ 'لا توجد بيانات مطابقة.' if current_lang == 'ar' else 'No data matches the selected filters.' }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -160,10 +223,10 @@
 </div>
 
 <!-- ── Navigation Cards Grid ── -->
-<div class='section-title'>Quick Actions</div>
+<div class='section-title mb-3'>⚡ {{ 'إجراءات سريعة' if current_lang == 'ar' else 'Quick Actions' }}</div>
 <div class='row g-4'>
   <div class='col-md-4'>
-    <div class='card nav-card h-100'>
+    <div class='card nav-card h-100 shadow-sm'>
       <div class='card-body p-4 d-flex flex-column'>
         <div class='mb-3'>
           <span class='d-inline-flex align-items-center justify-content-center rounded-3 p-2 mb-2' style='background:#eef2ff;'>
@@ -171,16 +234,16 @@
               <path d='M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5'/>
             </svg>
           </span>
-          <h5 class='fw-700 mb-1' style='font-weight:700;'>Manage Employees</h5>
-          <p class='text-muted small mb-0'>Add, update, or remove employees. Link to their managers and edit position details.</p>
+          <h5 class='fw-700 mb-1' style='font-weight:700;'>{{ 'إدارة الموظفين' if current_lang == 'ar' else 'Manage Employees' }}</h5>
+          <p class='text-muted small mb-0'>{{ 'إضافة وتعديل وحذف الموظفين، وربطهم بالمدراء وتحديد مسمياتهم الوظيفية.' if current_lang == 'ar' else 'Add, update, or remove employees. Link to their managers and edit position details.' }}</p>
         </div>
-        <a href='{{ url_for("hr_employees") }}' class='btn btn-primary mt-auto py-2 w-100'>Go to Employees</a>
+        <a href='{{ url_for("hr_employees") }}' class='btn btn-primary mt-auto py-2 w-100'>{{ 'الذهاب للموظفين' if current_lang == 'ar' else 'Go to Employees' }}</a>
       </div>
     </div>
   </div>
 
   <div class='col-md-4'>
-    <div class='card nav-card nav-card-green h-100'>
+    <div class='card nav-card nav-card-green h-100 shadow-sm'>
       <div class='card-body p-4 d-flex flex-column'>
         <div class='mb-3'>
           <span class='d-inline-flex align-items-center justify-content-center rounded-3 p-2 mb-2' style='background:#d1fae5;'>
@@ -188,16 +251,16 @@
               <path d='M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v8A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5m1.886 6.914L15 7.151V12.5a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V7.15l6.614 1.764a1.5 1.5 0 0 0 .772 0zM1.5 4h13a.5.5 0 0 1 .5.5v1.616L8.129 7.948a.5.5 0 0 1-.258 0L1 6.116V4.5a.5.5 0 0 1 .5-.5'/>
             </svg>
           </span>
-          <h5 class='fw-700 mb-1' style='font-weight:700;'>Manage Projects</h5>
-          <p class='text-muted small mb-0'>Create and manage client projects. Set dates, assign clients, and track initiatives.</p>
+          <h5 class='fw-700 mb-1' style='font-weight:700;'>{{ 'إدارة المشاريع' if current_lang == 'ar' else 'Manage Projects' }}</h5>
+          <p class='text-muted small mb-0'>{{ 'إنشاء وإدارة مشاريع العملاء، وتحديد التواريخ وتتبع الإنتاجية.' if current_lang == 'ar' else 'Create and manage client projects. Set dates, assign clients, and track initiatives.' }}</p>
         </div>
-        <a href='{{ url_for("hr_projects") }}' class='btn btn-success mt-auto py-2 w-100'>Go to Projects</a>
+        <a href='{{ url_for("hr_projects") }}' class='btn btn-success mt-auto py-2 w-100'>{{ 'الذهاب للمشاريع' if current_lang == 'ar' else 'Go to Projects' }}</a>
       </div>
     </div>
   </div>
 
   <div class='col-md-4'>
-    <div class='card nav-card nav-card-blue h-100'>
+    <div class='card nav-card nav-card-blue h-100 shadow-sm'>
       <div class='card-body p-4 d-flex flex-column'>
         <div class='mb-3'>
           <span class='d-inline-flex align-items-center justify-content-center rounded-3 p-2 mb-2' style='background:#e0f2fe;'>
@@ -206,10 +269,10 @@
               <path d='M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445'/>
             </svg>
           </span>
-          <h5 class='fw-700 mb-1' style='font-weight:700;'>Live Task Tracking</h5>
-          <p class='text-muted small mb-0'>Monitor company-wide task durations in real time. Filter by employee, project, and status.</p>
+          <h5 class='fw-700 mb-1' style='font-weight:700;'>{{ 'المتابعة المباشرة' if current_lang == 'ar' else 'Live Task Tracking' }}</h5>
+          <p class='text-muted small mb-0'>{{ 'مراقبة مدد المهام الجارية للموظفين مباشرة بالثواني مع إمكانيات تصفية متقدمة.' if current_lang == 'ar' else 'Monitor company-wide task durations in real time. Filter by employee, project, and status.' }}</p>
         </div>
-        <a href='{{ url_for("hr_tracking") }}' class='btn btn-info mt-auto py-2 w-100'>Open Live Tracking</a>
+        <a href='{{ url_for("hr_tracking") }}' class='btn btn-info mt-auto py-2 w-100'>{{ 'فتح المتابعة الحية' if current_lang == 'ar' else 'Open Live Tracking' }}</a>
       </div>
     </div>
   </div>
@@ -233,5 +296,58 @@
       .catch(err => console.error('Refresh error:', err));
   }
   setInterval(refreshMetricsAndSummary, 10000);
+
+  // Draw Charts
+  {% if hr_chart_projects_data %}
+  const projCtx = document.getElementById('hrProjectTimeChart').getContext('2d');
+  new Chart(projCtx, {
+      type: 'doughnut',
+      data: {
+          labels: {{ hr_chart_projects_labels|tojson }},
+          datasets: [{
+              data: {{ hr_chart_projects_data|tojson }},
+              backgroundColor: ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6b7280'],
+              borderWidth: 1
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+              legend: {
+                  position: 'bottom',
+                  labels: { boxWidth: 12, padding: 15 }
+              }
+          }
+      }
+  });
+
+  const empCtx = document.getElementById('hrTopEmployeesChart').getContext('2d');
+  new Chart(empCtx, {
+      type: 'bar',
+      data: {
+          labels: {{ hr_chart_employees_labels|tojson }},
+          datasets: [{
+              label: "{{ 'ساعات العمل' if current_lang == 'ar' else 'Hours Worked' }}",
+              data: {{ hr_chart_employees_data|tojson }},
+              backgroundColor: '#10b981',
+              borderRadius: 6,
+              borderWidth: 0
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } },
+          scales: {
+              x: {
+                  beginAtZero: true,
+                  title: { display: true, text: "{{ 'الساعات' if current_lang == 'ar' else 'Hours' }}" }
+              }
+          }
+      }
+  });
+  {% endif %}
 </script>
 {% endblock %}

@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}Manage Projects – WorkPulse{% endblock %}
+{% block title %}{{ _('manage_projects') }} – WorkPulse{% endblock %}
 {% block content %}
 
 <div class='page-header'>
   <div>
-    <h1 class='page-title'>Manage Projects</h1>
-    <p class='page-subtitle'>Add and manage client projects</p>
+    <h1 class='page-title'>{{ _('manage_projects') }}</h1>
+    <p class='page-subtitle'>{{ _('add_project') }} & {{ _('manage_projects') }}</p>
   </div>
-  <a href='{{ url_for("hr_dashboard") }}' class='btn btn-secondary'>← Back to Dashboard</a>
+  <a href='{{ url_for("hr_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
 </div>
 
 <div class='row g-4'>
@@ -18,27 +18,41 @@
         <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='me-2' viewBox='0 0 16 16'>
           <path d='M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2'/>
         </svg>
-        Add New Project
+        {{ _('add_project') }}
       </div>
       <div class='card-body p-4'>
         <form action='{{ url_for("add_project") }}' method='post'>
           <div class='mb-3'>
-            <label class='form-label'>Project Name</label>
+            <label class='form-label'>{{ _('project_name') }}</label>
             <input type='text' name='name' class='form-control' placeholder='e.g. Website Redesign' required>
           </div>
           <div class='mb-3'>
-            <label class='form-label'>Client</label>
+            <label class='form-label'>{{ _('client') }}</label>
             <input type='text' name='client' class='form-control' placeholder='e.g. ACME Corp' required>
           </div>
           <div class='mb-3'>
-            <label class='form-label'>Start Date <span class='text-muted fw-normal'>(Optional)</span></label>
+            <label class='form-label'>{{ _('start_date') }} <span class='text-muted fw-normal'>({{ 'اختياري' if current_lang == 'ar' else 'Optional' }})</span></label>
             <input type='date' name='start_date' class='form-control'>
           </div>
-          <div class='mb-4'>
-            <label class='form-label'>End Date <span class='text-muted fw-normal'>(Optional)</span></label>
+          <div class='mb-3'>
+            <label class='form-label'>{{ _('end_date') }} <span class='text-muted fw-normal'>({{ 'اختياري' if current_lang == 'ar' else 'Optional' }})</span></label>
             <input type='date' name='end_date' class='form-control'>
           </div>
-          <button type='submit' class='btn btn-success w-100 py-2'>Add Project</button>
+          
+          <div class='mb-4'>
+            <label class='form-label d-flex justify-content-between align-items-center'>
+              <span>{{ _('assign_employees') }}</span>
+              <button type='button' class='btn btn-sm btn-link p-0 text-decoration-none' id='selectAllEmployeesBtn'>{{ _('select_all') }}</button>
+            </label>
+            <select name='employee_ids' id='employeeSelectMultiple' class='form-select' multiple size='5'>
+              {% for emp in employees %}
+                <option value='{{ emp.id }}'>{{ emp.full_name or emp.username }}</option>
+              {% endfor %}
+            </select>
+            <div class='form-text'>{{ 'اضغط مع الاستمرار على Ctrl لتحديد أكثر من موظف' if current_lang == 'ar' else 'Hold Ctrl (Windows) or Cmd (Mac) to select multiple.' }}</div>
+          </div>
+          
+          <button type='submit' class='btn btn-success w-100 py-2'>{{ _('add_project') }}</button>
         </form>
       </div>
     </div>
@@ -46,17 +60,17 @@
 
   <!-- Projects Table -->
   <div class='col-md-8'>
-    <div class='section-title'>Existing Projects <span class='text-muted fw-normal' style='font-size:.85rem;'>{{ projects|length }} total</span></div>
+    <div class='section-title'>{{ _('existing_projects') }} <span class='text-muted fw-normal' style='font-size:.85rem;'>{{ projects|length }} total</span></div>
     <div class='card'>
       <div class='table-responsive'>
         <table class='table mb-0'>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Client</th>
-              <th>Start Date</th>
-              <th>End Date</th>
-              <th class='text-center'>Actions</th>
+              <th>{{ _('project_name') }}</th>
+              <th>{{ _('client') }}</th>
+              <th>{{ _('start_date') }}</th>
+              <th>{{ _('end_date') }}</th>
+              <th class='text-center'>{{ _('actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -70,17 +84,17 @@
               <td class='text-muted'>{{ proj.end_date or '–' }}</td>
               <td class='text-center'>
                 <div class='d-flex gap-2 justify-content-center'>
-                  <a href='{{ url_for("edit_project", project_id=proj.id) }}' class='btn btn-primary btn-sm'>Edit</a>
+                  <a href='{{ url_for("edit_project", project_id=proj.id) }}' class='btn btn-primary btn-sm'>{{ _('edit') }}</a>
                   <form action='{{ url_for("delete_project", project_id=proj.id) }}' method='post' style='display:inline;'>
                     <button type='submit' class='btn btn-danger btn-sm'
-                            onclick="return confirm('Delete this project? All associated tasks will be unlinked.')">Delete</button>
+                            onclick="return confirm('{{ 'هل أنت متأكد من حذف هذا المشروع؟' if current_lang == 'ar' else 'Delete this project? All associated tasks will be unlinked.' }}')">{{ _('delete') }}</button>
                   </form>
                 </div>
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan='5' class='text-center text-muted py-4'>No projects found in the system.</td>
+              <td colspan='5' class='text-center text-muted py-4'>{{ _('no_projects_found') }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -91,3 +105,24 @@
 </div>
 
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('selectAllEmployeesBtn')?.addEventListener('click', function() {
+    const select = document.getElementById('employeeSelectMultiple');
+    if (!select) return;
+    const options = select.options;
+    let allSelected = true;
+    for (let i = 0; i < options.length; i++) {
+        if (!options[i].selected) {
+            allSelected = false;
+            break;
+        }
+    }
+    for (let i = 0; i < options.length; i++) {
+        options[i].selected = !allSelected;
+    }
+});
+</script>
+{% endblock %}
+
