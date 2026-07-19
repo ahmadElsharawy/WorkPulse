@@ -4,17 +4,161 @@
 {% block content %}
 <style>
   @media print {
-    .no-print, nav, footer, .navbar, .page-header-actions, .hr-control-panel, .action-col {
+    @page {
+      size: A4 landscape;
+      margin: 4mm 6mm 4mm 6mm;
+    }
+
+    html, body, main, .container, .container-fluid, .content-wrapper, #content, .page-wrapper {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-size: 9px !important;
+      line-height: 1.15 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+    }
+
+    .no-print, nav, footer, .navbar, .page-header, .hr-control-panel, .action-col, .screen-only {
       display: none !important;
     }
-    body {
-      background: #fff !important;
-      color: #000 !important;
-      padding: 0 !important;
+
+    .print-only {
+      display: block !important;
     }
+
+    .settlement-print-wrapper {
+      display: grid !important;
+      grid-template-columns: 0.88fr 1.12fr !important;
+      gap: 10px !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .print-left-column, .print-right-column {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 4px !important;
+      width: 100% !important;
+    }
+
     .card {
-      border: 1px solid #ddd !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 6px !important;
       box-shadow: none !important;
+      margin-bottom: 4px !important;
+      padding: 0 !important;
+      background: #fff !important;
+      width: 100% !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+
+    .card-body {
+      padding: 4px 8px !important;
+    }
+
+    .card-header {
+      padding: 4px 8px !important;
+      font-size: 9.5px !important;
+      font-weight: bold !important;
+    }
+
+    .card-header h6, h4, h6, h1 {
+      font-size: 9.5px !important;
+      margin: 0 !important;
+    }
+
+    .display-5 {
+      font-size: 1.2rem !important;
+    }
+
+    .employee-header-card {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important;
+      color: #ffffff !important;
+      padding: 4px 8px !important;
+    }
+
+    .employee-header-card .card-body {
+      padding: 4px 8px !important;
+    }
+
+    .employee-header-card h4 {
+      font-size: 13px !important;
+    }
+
+    .settlement-banner {
+      background: #f8fafc !important;
+      border: 1.5px solid #6366f1 !important;
+    }
+
+    .detailed-calculations-row {
+      margin-bottom: 4px !important;
+    }
+
+    table {
+      font-size: 8.5px !important;
+      margin-bottom: 0 !important;
+      width: 100% !important;
+    }
+
+    th, td {
+      padding: 2.5px 5px !important;
+      line-height: 1.1 !important;
+      vertical-align: middle !important;
+    }
+
+    .badge {
+      padding: 1.5px 4px !important;
+      font-size: 8px !important;
+      border: 0.5px solid #94a3b8 !important;
+    }
+
+    .signature-footer {
+      margin-top: 4px !important;
+      padding: 6px 10px !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 6px !important;
+      font-size: 8.5px !important;
+    }
+
+    .signature-footer p {
+      font-size: 8px !important;
+      margin-bottom: 2px !important;
+    }
+
+    .signature-footer .mb-4 {
+      margin-bottom: 12px !important;
+    }
+
+    .hr-notes-alert {
+      padding: 4px 8px !important;
+      margin-bottom: 4px !important;
+      font-size: 8.5px !important;
+    }
+
+    .alert-heading {
+      font-size: 9px !important;
+    }
+
+    * {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+  }
+
+  @media screen {
+    .print-only {
+      display: none !important;
     }
   }
 </style>
@@ -242,8 +386,10 @@
 </div>
 {% endif %}
 
-<!-- Employee Header Card -->
-<div class='card mb-4 border-0 shadow-sm overflow-hidden' style='border-radius: 16px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #fff;'>
+<div class="settlement-print-wrapper">
+  <div class="print-left-column">
+    <!-- Employee Header Card -->
+<div class='card mb-4 border-0 shadow-sm overflow-hidden employee-header-card' style='border-radius: 16px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #fff;'>
   <div class='card-body p-4 d-flex flex-wrap align-items-center justify-content-between gap-3'>
     <div class='d-flex align-items-center gap-3'>
       <div class='bg-white text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold fs-3' style='width: 60px; height: 60px; color: #312e81 !important;'>
@@ -285,8 +431,8 @@
   </div>
 </div>
 
-<!-- ── Main Financial Settlement Highlight Banner ── -->
-<div class='card mb-4 border-0 shadow-sm overflow-hidden' style='border-radius: 16px; border: 2px solid #6366f1 !important; background: #f8fafc;'>
+    <!-- ── Main Financial Settlement Highlight Banner ── -->
+<div class='card mb-4 border-0 shadow-sm overflow-hidden settlement-banner' style='border-radius: 16px; border: 2px solid #6366f1 !important; background: #f8fafc;'>
   <div class='card-body p-4'>
     <div class='row g-4 align-items-center'>
       
@@ -344,265 +490,7 @@
   </div>
 </div>
 
-<!-- ── ITMEIZED FINANCIAL ADJUSTMENTS TABLE (جدول بنود الخصومات والإضافات المسببة) ── -->
-<div class='card mb-4 border-0 shadow-sm overflow-hidden' style='border-radius: 16px; border: 1px solid #e2e8f0 !important;'>
-  <div class='card-header bg-white p-3.5 border-bottom d-flex align-items-center justify-content-between'>
-    <h6 class='fw-bold mb-0 text-dark d-flex align-items-center gap-2'>
-      <span>💰</span>
-      <span>{{ 'جدول بنود الإضافات والخصومات المالية المسببة' if current_lang == 'ar' else 'Itemized Financial Additions & Deductions with Reasons' }}</span>
-    </h6>
-    <span class='badge bg-success rounded-pill px-2.5 py-1'>{{ gratuity_info.financial_items|length }} {{ 'بنود' if current_lang == 'ar' else 'items' }}</span>
-  </div>
-
-  <div class='card-body p-0'>
-    {% if gratuity_info.financial_items %}
-      <div class='table-responsive'>
-        <table class='table table-hover align-middle mb-0'>
-          <thead class='table-light'>
-            <tr>
-              <th>#</th>
-              <th>{{ 'نوع البند' if current_lang == 'ar' else 'Type' }}</th>
-              <th>{{ 'المبلغ (AED)' if current_lang == 'ar' else 'Amount' }}</th>
-              <th>{{ 'سبب وتفاصيل الخصم أو الإضافة (مسبب)' if current_lang == 'ar' else 'Reason & Details' }}</th>
-              <th>{{ 'المسجل' if current_lang == 'ar' else 'Added By' }}</th>
-              {% if is_hr_view %}<th class='text-center action-col'>{{ 'خيارات' if current_lang == 'ar' else 'Actions' }}</th>{% endif %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in gratuity_info.financial_items %}
-              <tr>
-                <td>{{ loop.index }}</td>
-                <td>
-                  {% if item.item_type == 'addition' %}
-                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style="background: #dcfce7; color: #15803d;">
-                      ➕ {{ 'إضافة / بدل' if current_lang == 'ar' else 'Addition' }}
-                    </span>
-                  {% else %}
-                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1" style="background: #fee2e2; color: #b91c1c;">
-                      ➖ {{ 'خصم / استقطاع' if current_lang == 'ar' else 'Deduction' }}
-                    </span>
-                  {% endif %}
-                </td>
-                <td>
-                  <strong class="{% if item.item_type == 'addition' %}text-success{% else %}text-danger{% endif %} fs-6">
-                    {% if item.item_type == 'addition' %}+{% else %}-{% endif %}{{ "%.2f"|format(item.amount) }}
-                  </strong>
-                </td>
-                <td><strong>{{ item.reason }}</strong></td>
-                <td><small class="text-muted">{{ item.created_by or 'HR' }} ({{ item.created_at }})</small></td>
-                {% if is_hr_view %}
-                  <td class='text-center action-col'>
-                    <form action="{{ url_for('delete_financial_item', user_id=employee.id, item_id=item.id) }}" method="POST" onsubmit="return confirm('هل أنت تأكد من إلغاء وحذف هذا البند المالي؟');" class="d-inline">
-                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="إلغاء البند">🗑️ {{ 'حذف' if current_lang == 'ar' else 'Delete' }}</button>
-                    </form>
-                  </td>
-                {% endif %}
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="p-4 text-center text-muted">
-        💵 {{ 'لا توجد خصومات أو إضافات مالية مسببة مسجلة حتى الآن.' if current_lang == 'ar' else 'No itemized financial additions or deductions recorded yet.' }}
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- ── DETAILED LEAVE DATES HISTORY TABLE (سجل تواريخ إجازات الموظف الدقيق) ── -->
-<div class='card mb-4 border-0 shadow-sm overflow-hidden' style='border-radius: 16px; border: 1px solid #e2e8f0 !important;'>
-  <div class='card-header bg-white p-3.5 border-bottom d-flex align-items-center justify-content-between'>
-    <h6 class='fw-bold mb-0 text-dark d-flex align-items-center gap-2'>
-      <span>🗓️</span>
-      <span>{{ 'سجل تواريخ الإجازات المسجلة للموظف (من تاريخ ... إلى تاريخ ...)' if current_lang == 'ar' else 'Recorded Leave History & Dates (Start -> End)' }}</span>
-    </h6>
-    <span class='badge bg-primary rounded-pill px-2.5 py-1'>{{ gratuity_info.leaves_history|length }} {{ 'إجازات' if current_lang == 'ar' else 'records' }}</span>
-  </div>
-
-  <div class='card-body p-0'>
-    {% if gratuity_info.leaves_history %}
-      <div class='table-responsive'>
-        <table class='table table-hover align-middle mb-0'>
-          <thead class='table-light'>
-            <tr>
-              <th>#</th>
-              <th>{{ 'نوع الإجازة' if current_lang == 'ar' else 'Leave Type' }}</th>
-              <th>{{ 'من تاريخ' if current_lang == 'ar' else 'Start Date' }}</th>
-              <th>{{ 'إلى تاريخ' if current_lang == 'ar' else 'End Date' }}</th>
-              <th>{{ 'عدد الأيام' if current_lang == 'ar' else 'Duration' }}</th>
-              <th>{{ 'السبب / الملاحظات' if current_lang == 'ar' else 'Reason / Notes' }}</th>
-              {% if is_hr_view %}<th class='text-center action-col'>{{ 'خيارات' if current_lang == 'ar' else 'Actions' }}</th>{% endif %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for l in gratuity_info.leaves_history %}
-              <tr>
-                <td>{{ loop.index }}</td>
-                <td>
-                  <span class="badge bg-indigo-subtle text-indigo px-2.5 py-1" style="background: #e0e7ff; color: #4338ca;">
-                    {{ l.leave_type }}
-                  </span>
-                </td>
-                <td><strong>📅 {{ l.start_date }}</strong></td>
-                <td><strong>📅 {{ l.end_date }}</strong></td>
-                <td>
-                  <span class="badge bg-primary px-2.5 py-1 fs-7">{{ l.duration_days }} {{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
-                  {% if not l.is_in_current_cycle %}
-                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1" style="font-size: 0.7rem;">🏛️ {{ 'مستهلكة سابقة (غير مخصومة من الرصيد الحالي)' if current_lang == 'ar' else 'Prior Cycle (Not Deducted)' }}</span>
-                  {% endif %}
-                </td>
-                <td><small class="text-muted">{{ l.reason or '-' }}</small></td>
-                {% if is_hr_view %}
-                  <td class='text-center action-col'>
-                    <form action="{{ url_for('delete_eos_leave', user_id=employee.id, leave_id=l.id) }}" method="POST" onsubmit="return confirm('هل أنت تأكد من إلغاء وحذف هذه الإجازة؟');" class="d-inline">
-                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="إلغاء الإجازة">🗑️ {{ 'حذف' if current_lang == 'ar' else 'Delete' }}</button>
-                    </form>
-                  </td>
-                {% endif %}
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="p-4 text-center text-muted">
-        🌴 {{ 'لا توجد إجازات مسجلة بتواريخ حتى الآن.' if current_lang == 'ar' else 'No leave history with dates recorded yet.' }}
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- ── YEAR-BY-YEAR LEAVE AUDIT LEDGER TABLE (جدول تدوير وتصفية الإجازات السنوي سنة بسنة) ── -->
-<div class='card mb-4 border-0 shadow-sm overflow-hidden' style='border-radius: 16px; border: 1px solid #6366f1 !important;'>
-  <div class='card-header p-3.5 border-bottom d-flex align-items-center justify-content-between' style='background: #f5f3ff;'>
-    <h6 class='fw-bold mb-0 d-flex align-items-center gap-2' style='color: #4338ca;'>
-      <span>🗓️</span>
-      <span>{{ 'جدول تدوير وتصفية الإجازات السنوي التفصيلي (من تاريخ التعيين وحتى اليوم سنة بسنة)' if current_lang == 'ar' else 'Year-by-Year Leave Audit & Carry-Forward Ledger' }}</span>
-    </h6>
-    <span class='badge text-white px-2.5 py-1' style='background: #4338ca;'>{{ gratuity_info.yearly_leave_ledger|length }} {{ 'سنوات خدمة' if current_lang == 'ar' else 'service years' }}</span>
-  </div>
-
-  <div class='card-body p-0'>
-    {% if gratuity_info.yearly_leave_ledger %}
-      <div class='table-responsive'>
-        <table class='table table-hover table-striped align-middle mb-0 text-center' style='font-size: 0.9rem;'>
-          <thead class='table-dark' style='background: #1e1b4b;'>
-            <tr>
-              <th>#</th>
-              <th>{{ 'سنة الخدمة' if current_lang == 'ar' else 'Service Year' }}</th>
-              <th>{{ 'فترة السنة' if current_lang == 'ar' else 'Period' }}</th>
-              <th>{{ 'الاستحقاق السنوي' if current_lang == 'ar' else 'Accrued Days' }}</th>
-              <th>{{ 'المُرَحّل من السنة السابقة' if current_lang == 'ar' else 'Carried In' }}</th>
-              <th>{{ 'إجمالي المتاح' if current_lang == 'ar' else 'Total Available' }}</th>
-              <th>{{ 'المستهلك في هذه السنة' if current_lang == 'ar' else 'Used in Year' }}</th>
-              <th>{{ 'المتبقي بنهاية السنة' if current_lang == 'ar' else 'Unused Year-End' }}</th>
-              <th>{{ 'المُرَحَّل للسنة التالية (أقصاه 15)' if current_lang == 'ar' else 'Carried Out (Max 15)' }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in gratuity_info.yearly_leave_ledger %}
-              <tr class="{% if row.is_current_year %}table-warning fw-bold{% endif %}">
-                <td>{{ loop.index }}</td>
-                <td>
-                  <span class="badge {% if row.is_current_year %}bg-warning text-dark{% else %}bg-indigo-subtle text-indigo{% endif %} px-2.5 py-1" style="{% if not row.is_current_year %}background: #e0e7ff; color: #4338ca;{% endif %}">
-                    {{ row.label }}
-                  </span>
-                </td>
-                <td><small class="text-muted">📅 {{ row.start_date }} ➔ {{ row.end_date }}</small></td>
-                <td><strong class="text-primary">+{{ row.accrued_days }}</strong></td>
-                <td><strong class="text-secondary">+{{ row.carried_in_days }}</strong></td>
-                <td><strong class="text-dark fs-6">{{ row.total_available_days }}</strong></td>
-                <td>
-                  {% if row.used_days > 0 %}
-                    <span class="badge bg-danger px-2.5 py-1">-{{ row.used_days }}</span>
-                  {% else %}
-                    <span class="text-muted">0.0</span>
-                  {% endif %}
-                </td>
-                <td><strong class="text-info">{{ row.unused_year_end_days }}</strong></td>
-                <td>
-                  {% if row.is_current_year %}
-                    <span class="badge bg-success fs-6 px-3 py-1.5" title="الرصيد المستحق النهائي">
-                      💎 {{ row.carried_out_days }} {{ 'أيام مستحقة' if current_lang == 'ar' else 'days due' }}
-                    </span>
-                  {% else %}
-                    <span class="badge bg-secondary px-2.5 py-1">
-                      ➡️ {{ row.carried_out_days }} {{ 'يوم مُرَحّل' if current_lang == 'ar' else 'carried' }}
-                    </span>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}
-      <div class="p-4 text-center text-muted">
-        🗓️ {{ 'لا توجد سنوات خدمة محسوبة بعد.' if current_lang == 'ar' else 'No service years calculated yet.' }}
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- ── UAE Custom Leave Types Summary Table ── -->
-<div class='card mb-4 border-0 shadow-sm overflow-hidden' style='border-radius: 16px; border: 1px solid #e2e8f0 !important;'>
-  <div class='card-header bg-white p-3.5 border-bottom d-flex align-items-center justify-content-between'>
-    <h6 class='fw-bold mb-0 text-dark d-flex align-items-center gap-2'>
-      <span>🇦🇪</span>
-      <span>{{ 'تجميع رصيد الإجازات (قانون العمل الإماراتي مرسوم بقانون رقم 33 لسنة 2021)' if current_lang == 'ar' else 'UAE Labor Law Leave Types Summary' }}</span>
-    </h6>
-    <span class='badge bg-light text-dark border'>{{ 'المواد 29 - 32' if current_lang == 'ar' else 'Articles 29-32' }}</span>
-  </div>
-
-  <div class='card-body p-0'>
-    <div class='table-responsive'>
-      <table class='table table-hover align-middle mb-0'>
-        <thead class='table-light'>
-          <tr>
-            <th>{{ 'نوع الإجازة' if current_lang == 'ar' else 'Leave Type' }}</th>
-            <th>{{ 'المادة القانونية' if current_lang == 'ar' else 'Legal Reference' }}</th>
-            <th>{{ 'الاستحقاق القانوني' if current_lang == 'ar' else 'Legal Entitlement' }}</th>
-            <th>{{ 'الأيام المسجلة بالتواريخ' if current_lang == 'ar' else 'Recorded Days' }}</th>
-            <th>{{ 'الأجر المطبق' if current_lang == 'ar' else 'Pay Rate' }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>🌴 {{ 'الإجازة السنوية' if current_lang == 'ar' else 'Annual Leave' }}</strong></td>
-            <td>المادة (29)</td>
-            <td>30 يوماً/سنة (يومان/شهر للسنة الأولى)</td>
-            <td><strong class="text-success">{{ "%.1f"|format(gratuity_info.remaining_leave_days) }} {{ 'أيام متبقية' if current_lang == 'ar' else 'days left' }}</strong></td>
-            <td><span class="badge bg-success-subtle text-success">أجر كامل (مسيّلة مالياً)</span></td>
-          </tr>
-          <tr>
-            <td><strong>🤒 {{ 'الإجازة المرضية' if current_lang == 'ar' else 'Sick Leave' }}</strong></td>
-            <td>المادة (31)</td>
-            <td>90 يوماً/سنة (15 كامل + 30 نصف + 45 بدون)</td>
-            <td><strong>{{ gratuity_info.sick_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
-            <td><span class="badge bg-info-subtle text-info">تدرّج الأجر القانوني</span></td>
-          </tr>
-          <tr>
-            <td><strong>🍼 {{ 'إجازة الوالدية / الأبوة والوضع' if current_lang == 'ar' else 'Parental / Maternity' }}</strong></td>
-            <td>المادة (32)</td>
-            <td>5 أيام والدية / 60 يوماً للوضع</td>
-            <td><strong>{{ gratuity_info.parental_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
-            <td><span class="badge bg-primary-subtle text-primary">أجر كامل</span></td>
-          </tr>
-          <tr>
-            <td><strong>🕯️ {{ 'إجازة الحداد / الوفاة' if current_lang == 'ar' else 'Bereavement Leave' }}</strong></td>
-            <td>المادة (32)</td>
-            <td>5 أيام (وفاة الزوج) / 3 أيام (الأقارب)</td>
-            <td><strong>{{ gratuity_info.bereavement_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
-            <td><span class="badge bg-secondary-subtle text-secondary">أجر كامل</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class='row g-4 mb-4'>
+    <div class='row g-4 mb-4 detailed-calculations-row'>
   
   <!-- Detailed Gratuity Breakdown Table Card -->
   <div class='col-lg-6'>
@@ -897,9 +785,101 @@
 
 </div>
 
-{% if gratuity_info.adjustment_notes %}
+    <!-- Official Legal Disclaimer & Signature Footer for Print -->
+<div class='card border-0 shadow-sm p-4 bg-white rounded-3 border mb-4 signature-footer print-only'>
+  <div class='row g-4 align-items-center'>
+    <div class='col-md-8'>
+      <h6 class='fw-bold text-dark mb-1'>⚖️ {{ 'إقرار وتصديق التصفية المالية' if current_lang == 'ar' else 'Official Settlement Declaration' }}</h6>
+      <p class='text-muted small mb-0'>
+        {{ 'تم إعداد هذا الكشف والتصفية المالية استناداً لأحكام قانون العمل الإماراتي (المرسوم بقانون اتحادي رقم 33 لسنة 2021) والسجلات المعتمدة في منظومة WorkPulse.' if current_lang == 'ar' else 'This settlement statement has been prepared according to UAE Labor Law (Federal Decree-Law No. 33 of 2021) and official records in WorkPulse.' }}
+      </p>
+    </div>
+    <div class='col-md-4 text-center border-start-md'>
+      <div class='d-flex justify-content-around text-muted small mt-2'>
+        <div>
+          <div class='mb-4'>___________________</div>
+          <strong>{{ 'توقيع الموظف' if current_lang == 'ar' else "Employee's Signature" }}</strong>
+        </div>
+        <div>
+          <div class='mb-4'>___________________</div>
+          <strong>{{ 'اعتماد الـ HR' if current_lang == 'ar' else 'HR Manager Approval' }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  </div> <!-- end of print-left-column -->
+
+  <div class="print-right-column">
+    <!-- ── ITMEIZED FINANCIAL ADJUSTMENTS TABLE (جدول بنود الخصومات والإضافات المسببة) ── -->
+<div class='card mb-4 border-0 shadow-sm overflow-hidden financial-adjustments-card' style='border-radius: 16px; border: 1px solid #e2e8f0 !important;'>
+  <div class='card-header bg-white p-3.5 border-bottom d-flex align-items-center justify-content-between'>
+    <h6 class='fw-bold mb-0 text-dark d-flex align-items-center gap-2'>
+      <span>💰</span>
+      <span>{{ 'جدول بنود الإضافات والخصومات المالية المسببة' if current_lang == 'ar' else 'Itemized Financial Additions & Deductions with Reasons' }}</span>
+    </h6>
+    <span class='badge bg-success rounded-pill px-2.5 py-1'>{{ gratuity_info.financial_items|length }} {{ 'بنود' if current_lang == 'ar' else 'items' }}</span>
+  </div>
+
+  <div class='card-body p-0'>
+    {% if gratuity_info.financial_items %}
+      <div class='table-responsive'>
+        <table class='table table-hover align-middle mb-0'>
+          <thead class='table-light'>
+            <tr>
+              <th>#</th>
+              <th>{{ 'نوع البند' if current_lang == 'ar' else 'Type' }}</th>
+              <th>{{ 'المبلغ (AED)' if current_lang == 'ar' else 'Amount' }}</th>
+              <th>{{ 'سبب وتفاصيل الخصم أو الإضافة (مسبب)' if current_lang == 'ar' else 'Reason & Details' }}</th>
+              <th>{{ 'المسجل' if current_lang == 'ar' else 'Added By' }}</th>
+              {% if is_hr_view %}<th class='text-center action-col'>{{ 'خيارات' if current_lang == 'ar' else 'Actions' }}</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in gratuity_info.financial_items %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                  {% if item.item_type == 'addition' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1" style="background: #dcfce7; color: #15803d;">
+                      ➕ {{ 'إضافة / بدل' if current_lang == 'ar' else 'Addition' }}
+                    </span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1" style="background: #fee2e2; color: #b91c1c;">
+                      ➖ {{ 'خصم / استقطاع' if current_lang == 'ar' else 'Deduction' }}
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  <strong class="{% if item.item_type == 'addition' %}text-success{% else %}text-danger{% endif %} fs-6">
+                    {% if item.item_type == 'addition' %}+{% else %}-{% endif %}{{ "%.2f"|format(item.amount) }}
+                  </strong>
+                </td>
+                <td><strong>{{ item.reason }}</strong></td>
+                <td><small class="text-muted">{{ item.created_by or 'HR' }} ({{ item.created_at }})</small></td>
+                {% if is_hr_view %}
+                  <td class='text-center action-col'>
+                    <form action="{{ url_for('delete_financial_item', user_id=employee.id, item_id=item.id) }}" method="POST" onsubmit="return confirm('هل أنت تأكد من إلغاء وحذف هذا البند المالي؟');" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="إلغاء البند">🗑️ {{ 'حذف' if current_lang == 'ar' else 'Delete' }}</button>
+                    </form>
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="p-4 text-center text-muted">
+        💵 {{ 'لا توجد خصومات أو إضافات مالية مسببة مسجلة حتى الآن.' if current_lang == 'ar' else 'No itemized financial additions or deductions recorded yet.' }}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+    {% if gratuity_info.adjustment_notes %}
 <!-- HR Justification / Notes Banner -->
-<div class="alert alert-info border shadow-xs mb-4" role="alert" style="border-radius: 12px;">
+<div class="alert alert-info border shadow-xs mb-4 hr-notes-alert" role="alert" style="border-radius: 12px;">
   <h6 class="fw-bold alert-heading mb-1">📝 {{ 'ملاحظات ومبررات الـ HR المعتمدة:' if current_lang == 'ar' else 'Approved HR Settlement Notes:' }}</h6>
   <p class="mb-1 text-dark">{{ gratuity_info.adjustment_notes }}</p>
   {% if gratuity_info.updated_by %}
@@ -909,9 +889,210 @@
   {% endif %}
 </div>
 {% endif %}
+    <!-- ── YEAR-BY-YEAR LEAVE AUDIT LEDGER TABLE (جدول تدوير وتصفية الإجازات السنوي سنة بسنة) ── -->
+<div class='card mb-4 border-0 shadow-sm overflow-hidden leave-ledger-card' style='border-radius: 16px; border: 1px solid #6366f1 !important;'>
+  <div class='card-header p-3.5 border-bottom d-flex align-items-center justify-content-between' style='background: #f5f3ff;'>
+    <h6 class='fw-bold mb-0 d-flex align-items-center gap-2' style='color: #4338ca;'>
+      <span>🗓️</span>
+      <span>{{ 'جدول تدوير وتصفية الإجازات السنوي التفصيلي (من تاريخ التعيين وحتى اليوم سنة بسنة)' if current_lang == 'ar' else 'Year-by-Year Leave Audit & Carry-Forward Ledger' }}</span>
+    </h6>
+    <span class='badge text-white px-2.5 py-1' style='background: #4338ca;'>{{ gratuity_info.yearly_leave_ledger|length }} {{ 'سنوات خدمة' if current_lang == 'ar' else 'service years' }}</span>
+  </div>
+
+  <div class='card-body p-0'>
+    {% if gratuity_info.yearly_leave_ledger %}
+      <div class='table-responsive'>
+        <table class='table table-hover table-striped align-middle mb-0 text-center' style='font-size: 0.9rem;'>
+          <thead class='table-dark' style='background: #1e1b4b;'>
+            <tr>
+              <th>#</th>
+              <th>{{ 'سنة الخدمة' if current_lang == 'ar' else 'Service Year' }}</th>
+              <th>{{ 'فترة السنة' if current_lang == 'ar' else 'Period' }}</th>
+              <th>{{ 'أيام الخدمة الفعلية' if current_lang == 'ar' else 'Active Service Days' }}</th>
+              <th>{{ 'الاستحقاق السنوي' if current_lang == 'ar' else 'Accrued Days' }}</th>
+              <th>{{ 'المُرَحّل من السنة السابقة' if current_lang == 'ar' else 'Carried In' }}</th>
+              <th>{{ 'إجمالي المتاح' if current_lang == 'ar' else 'Total Available' }}</th>
+              <th>{{ 'المستهلك في هذه السنة' if current_lang == 'ar' else 'Used in Year' }}</th>
+              <th>{{ 'المتبقي بنهاية السنة' if current_lang == 'ar' else 'Unused Year-End' }}</th>
+              <th>{{ 'المُرَحَّل للسنة التالية (أقصاه 15)' if current_lang == 'ar' else 'Carried Out (Max 15)' }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in gratuity_info.yearly_leave_ledger %}
+              <tr class="{% if row.is_current_year %}table-warning fw-bold{% endif %}">
+                <td>{{ loop.index }}</td>
+                <td>
+                  <span class="badge {% if row.is_current_year %}bg-warning text-dark{% else %}bg-indigo-subtle text-indigo{% endif %} px-2.5 py-1" style="{% if not row.is_current_year %}background: #e0e7ff; color: #4338ca;{% endif %}">
+                    {{ row.label }}
+                  </span>
+                </td>
+                <td><small class="text-muted">📅 {{ row.start_date }} ➔ {{ row.end_date }}</small></td>
+                <td>
+                  <span class="fw-semibold text-dark">{{ row.active_days }} / {{ row.segment_days }} {{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
+                  {% if row.unpaid_leave_days > 0 %}
+                    <br><small class="text-danger">({{ 'خصم' if current_lang == 'ar' else 'deducted' }} {{ row.unpaid_leave_days }} {{ 'بدون أجر' if current_lang == 'ar' else 'unpaid' }})</small>
+                  {% endif %}
+                </td>
+                <td><strong class="text-primary">+{{ row.accrued_days }}</strong></td>
+                <td><strong class="text-secondary">+{{ row.carried_in_days }}</strong></td>
+                <td><strong class="text-dark fs-6">{{ row.total_available_days }}</strong></td>
+                <td>
+                  {% if row.used_days > 0 %}
+                    <span class="badge bg-danger px-2.5 py-1">-{{ row.used_days }}</span>
+                  {% else %}
+                    <span class="text-muted">0.0</span>
+                  {% endif %}
+                </td>
+                <td><strong class="text-info">{{ row.unused_year_end_days }}</strong></td>
+                <td>
+                  {% if row.is_current_year %}
+                    <span class="badge bg-success fs-6 px-3 py-1.5" title="الرصيد المستحق النهائي">
+                      💎 {{ row.carried_out_days }} {{ 'أيام مستحقة' if current_lang == 'ar' else 'days due' }}
+                    </span>
+                  {% else %}
+                    <span class="badge bg-secondary px-2.5 py-1">
+                      ➡️ {{ row.carried_out_days }} {{ 'يوم مُرَحّل' if current_lang == 'ar' else 'carried' }}
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="p-4 text-center text-muted">
+        🗓️ {{ 'لا توجد سنوات خدمة محسوبة بعد.' if current_lang == 'ar' else 'No service years calculated yet.' }}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+    <!-- ── UAE Custom Leave Types Summary Table ── -->
+<div class='card mb-4 border-0 shadow-sm overflow-hidden leave-summary-card' style='border-radius: 16px; border: 1px solid #e2e8f0 !important;'>
+  <div class='card-header bg-white p-3.5 border-bottom d-flex align-items-center justify-content-between'>
+    <h6 class='fw-bold mb-0 text-dark d-flex align-items-center gap-2'>
+      <span>🇦🇪</span>
+      <span>{{ 'تجميع رصيد الإجازات (قانون العمل الإماراتي مرسوم بقانون رقم 33 لسنة 2021)' if current_lang == 'ar' else 'UAE Labor Law Leave Types Summary' }}</span>
+    </h6>
+    <span class='badge bg-light text-dark border'>{{ 'المواد 29 - 32' if current_lang == 'ar' else 'Articles 29-32' }}</span>
+  </div>
+
+  <div class='card-body p-0'>
+    <div class='table-responsive'>
+      <table class='table table-hover align-middle mb-0'>
+        <thead class='table-light'>
+          <tr>
+            <th>{{ 'نوع الإجازة' if current_lang == 'ar' else 'Leave Type' }}</th>
+            <th>{{ 'المادة القانونية' if current_lang == 'ar' else 'Legal Reference' }}</th>
+            <th>{{ 'الاستحقاق القانوني' if current_lang == 'ar' else 'Legal Entitlement' }}</th>
+            <th>{{ 'الأيام المسجلة بالتواريخ' if current_lang == 'ar' else 'Recorded Days' }}</th>
+            <th>{{ 'الأجر المطبق' if current_lang == 'ar' else 'Pay Rate' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>🌴 {{ 'الإجازة السنوية' if current_lang == 'ar' else 'Annual Leave' }}</strong></td>
+            <td>المادة (29)</td>
+            <td>30 يوماً/سنة (يومان/شهر للسنة الأولى)</td>
+            <td><strong class="text-success">{{ "%.1f"|format(gratuity_info.remaining_leave_days) }} {{ 'أيام متبقية' if current_lang == 'ar' else 'days left' }}</strong></td>
+            <td><span class="badge bg-success-subtle text-success">أجر كامل (مسيّلة مالياً)</span></td>
+          </tr>
+          <tr>
+            <td><strong>🤒 {{ 'الإجازة المرضية' if current_lang == 'ar' else 'Sick Leave' }}</strong></td>
+            <td>المادة (31)</td>
+            <td>90 يوماً/سنة (15 كامل + 30 نصف + 45 بدون)</td>
+            <td><strong>{{ gratuity_info.sick_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
+            <td><span class="badge bg-info-subtle text-info">تدرّج الأجر القانوني</span></td>
+          </tr>
+          <tr>
+            <td><strong>🍼 {{ 'إجازة الوالدية / الأبوة والوضع' if current_lang == 'ar' else 'Parental / Maternity' }}</strong></td>
+            <td>المادة (32)</td>
+            <td>5 أيام والدية / 60 يوماً للوضع</td>
+            <td><strong>{{ gratuity_info.parental_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
+            <td><span class="badge bg-primary-subtle text-primary">أجر كامل</span></td>
+          </tr>
+          <tr>
+            <td><strong>🕯️ {{ 'إجازة الحداد / الوفاة' if current_lang == 'ar' else 'Bereavement Leave' }}</strong></td>
+            <td>المادة (32)</td>
+            <td>5 أيام (وفاة الزوج) / 3 أيام (الأقارب)</td>
+            <td><strong>{{ gratuity_info.bereavement_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
+            <td><span class="badge bg-secondary-subtle text-secondary">أجر كامل</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+    <!-- ── DETAILED LEAVE DATES HISTORY TABLE (سجل تواريخ إجازات الموظف الدقيق) ── -->
+<div class='card mb-4 border-0 shadow-sm overflow-hidden leave-history-card' style='border-radius: 16px; border: 1px solid #e2e8f0 !important;'>
+  <div class='card-header bg-white p-3.5 border-bottom d-flex align-items-center justify-content-between'>
+    <h6 class='fw-bold mb-0 text-dark d-flex align-items-center gap-2'>
+      <span>🗓️</span>
+      <span>{{ 'سجل تواريخ الإجازات المسجلة للموظف (من تاريخ ... إلى تاريخ ...)' if current_lang == 'ar' else 'Recorded Leave History & Dates (Start -> End)' }}</span>
+    </h6>
+    <span class='badge bg-primary rounded-pill px-2.5 py-1'>{{ gratuity_info.leaves_history|length }} {{ 'إجازات' if current_lang == 'ar' else 'records' }}</span>
+  </div>
+
+  <div class='card-body p-0'>
+    {% if gratuity_info.leaves_history %}
+      <div class='table-responsive'>
+        <table class='table table-hover align-middle mb-0'>
+          <thead class='table-light'>
+            <tr>
+              <th>#</th>
+              <th>{{ 'نوع الإجازة' if current_lang == 'ar' else 'Leave Type' }}</th>
+              <th>{{ 'من تاريخ' if current_lang == 'ar' else 'Start Date' }}</th>
+              <th>{{ 'إلى تاريخ' if current_lang == 'ar' else 'End Date' }}</th>
+              <th>{{ 'عدد الأيام' if current_lang == 'ar' else 'Duration' }}</th>
+              <th>{{ 'السبب / الملاحظات' if current_lang == 'ar' else 'Reason / Notes' }}</th>
+              {% if is_hr_view %}<th class='text-center action-col'>{{ 'خيارات' if current_lang == 'ar' else 'Actions' }}</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in gratuity_info.leaves_history %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                  <span class="badge bg-indigo-subtle text-indigo px-2.5 py-1" style="background: #e0e7ff; color: #4338ca;">
+                    {{ l.leave_type }}
+                  </span>
+                </td>
+                <td><strong>📅 {{ l.start_date }}</strong></td>
+                <td><strong>📅 {{ l.end_date }}</strong></td>
+                <td>
+                  <span class="badge bg-primary px-2.5 py-1 fs-7">{{ l.duration_days }} {{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
+                  {% if not l.is_in_current_cycle %}
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1" style="font-size: 0.7rem;">🏛️ {{ 'مستهلكة سابقة (غير مخصومة من الرصيد الحالي)' if current_lang == 'ar' else 'Prior Cycle (Not Deducted)' }}</span>
+                  {% endif %}
+                </td>
+                <td><small class="text-muted">{{ l.reason or '-' }}</small></td>
+                {% if is_hr_view %}
+                  <td class='text-center action-col'>
+                    <form action="{{ url_for('delete_eos_leave', user_id=employee.id, leave_id=l.id) }}" method="POST" onsubmit="return confirm('هل أنت تأكد من إلغاء وحذف هذه الإجازة؟');" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="إلغاء الإجازة">🗑️ {{ 'حذف' if current_lang == 'ar' else 'Delete' }}</button>
+                    </form>
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="p-4 text-center text-muted">
+        🌴 {{ 'لا توجد إجازات مسجلة بتواريخ حتى الآن.' if current_lang == 'ar' else 'No leave history with dates recorded yet.' }}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+  </div> <!-- end of print-right-column -->
+</div> <!-- end of settlement-print-wrapper -->
 
 <!-- Official Legal Disclaimer & Signature Footer for Print -->
-<div class='card border-0 shadow-sm p-4 bg-white rounded-3 border mb-4'>
+<div class='card border-0 shadow-sm p-4 bg-white rounded-3 border mb-4 signature-footer screen-only'>
   <div class='row g-4 align-items-center'>
     <div class='col-md-8'>
       <h6 class='fw-bold text-dark mb-1'>⚖️ {{ 'إقرار وتصديق التصفية المالية' if current_lang == 'ar' else 'Official Settlement Declaration' }}</h6>

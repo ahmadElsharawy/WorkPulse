@@ -340,7 +340,10 @@ def calculate_uae_gratuity_and_leaves(employee, db):
             'used_days': round(used_in_this_year, 1),
             'unused_year_end_days': round(unused_year_end, 1),
             'carried_out_days': round(carried_out, 1),
-            'is_current_year': is_last_year
+            'is_current_year': is_last_year,
+            'segment_days': segment_days,
+            'active_days': round(active_days_in_segment, 1),
+            'unpaid_leave_days': round(unpaid_in_segment, 1)
         })
 
         if is_last_year:
