@@ -50,8 +50,8 @@
   ];
 
   function pollLiveUpdates() {
-    // Only poll if tab is active to save resources
-    if (document.hidden) return;
+    // Only poll if tab is active and no modal is currently open to save resources & prevent UI freezes
+    if (document.hidden || document.querySelector('.modal.show')) return;
 
     fetch(window.location.href, { cache: 'no-store' })
       .then(r => {

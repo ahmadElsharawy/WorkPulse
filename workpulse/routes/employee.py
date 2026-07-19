@@ -221,6 +221,11 @@ def register_employee_routes(app):
             WHERE em.employee_id = ?
         ''', (current_user.id,)).fetchall()
         
+        # Calculate UAE Gratuity & Leave Balance
+        from workpulse.helpers import calculate_uae_gratuity_and_leaves
+        employee_row = db.execute('SELECT * FROM users WHERE id = ?', (current_user.id,)).fetchone()
+        gratuity_info = calculate_uae_gratuity_and_leaves(employee_row, db)
+
         return render_template(
             'employee/employee.html', 
             tasks=paginated_tasks, 
@@ -239,6 +244,7 @@ def register_employee_routes(app):
             chart_weekly_data=chart_weekly_data,
             pending_sub_approvals=pending_sub_approvals,
             my_managers=my_managers,
+            gratuity_info=gratuity_info,
             
             page=page,
             total_pages=total_pages,
@@ -698,7 +704,10 @@ def register_employee_routes(app):
                 'remaining_hours': remaining_hours
             })
             
-        return render_template('employee/profile.html', employee=employee, assigned_project_balances=assigned_project_balances)
+        from workpulse.helpers import calculate_uae_gratuity_and_leaves
+        gratuity_info = calculate_uae_gratuity_and_leaves(employee, db)
+            
+        return render_template('employee/profile.html', employee=employee, assigned_project_balances=assigned_project_balances, gratuity_info=gratuity_info)
 
     @app.route('/employee/team-status')
     @role_required('Employee')
@@ -978,4 +987,23 @@ def register_employee_routes(app):
             sub_showing_from=sub_showing_from,
             sub_showing_to=sub_showing_to,
             total_sub_tasks=total_sub_tasks
+        )
+
+    @app.route('/employee/end-of-service')
+    @role_required('Employee')
+    def employee_end_of_service():
+        db = get_db()
+        employee = db.execute('SELECT * FROM users WHERE id = ?', (current_user.id,)).fetchone()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('employee_dashboard'))
+            
+        from workpulse.helpers import calculate_uae_gratuity_and_leaves
+        gratuity_info = calculate_uae_gratuity_and_leaves(employee, db)
+        
+        return render_template(
+            'end_of_service.html',
+            employee=employee,
+            gratuity_info=gratuity_info,
+            is_hr_view=False
         )

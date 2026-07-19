@@ -11,6 +11,7 @@ from .routes.auth import register_auth_routes
 from .routes.employee import register_employee_routes
 from .routes.hr import register_hr_routes
 from .routes.reports import register_reports_routes
+from .routes.requests import bp as requests_bp
 
 
 def create_app():
@@ -66,6 +67,7 @@ def create_app():
     register_hr_routes(app)
     register_employee_routes(app)
     register_reports_routes(app)
+    app.register_blueprint(requests_bp)
 
     return app
 

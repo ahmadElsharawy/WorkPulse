@@ -1,0 +1,387 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'طلبات الإجازات' if current_lang == 'ar' else 'Leave Requests' }} - WorkPulse{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Header Banner -->
+  <div class="card border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: white; border-radius: 16px;">
+    <div class="card-body p-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+      <div>
+        <span class="badge bg-indigo-subtle text-indigo-light mb-2 px-3 py-2" style="background: rgba(129,140,248,0.2); color: #c7d2fe; font-size: 0.82rem; border-radius: 20px;">
+          📝 {{ 'قسم الطلبات' if current_lang == 'ar' else 'Requests Portal' }}
+        </span>
+        <h2 class="h3 fw-bold mb-1" style="letter-spacing: -0.5px;">
+          🌴 {{ 'إدارة ومتابعة طلبات الإجازات' if current_lang == 'ar' else 'Leave Requests Management' }}
+        </h2>
+        <p class="mb-0 text-white-50 fs-6">
+          {{ 'متابعة تسلسل موافقات المديرين والـ HR مع تتبع دقيق لأوقات الاستجابة والانتظار' if current_lang == 'ar' else 'Track manager and HR approval chains with detailed response duration tracking' }}
+        </p>
+      </div>
+
+      {% if current_user.role == 'Employee' or current_user.role == 'HR' %}
+      <div>
+        <button type="button" class="btn btn-light fw-semibold px-4 py-2 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createLeaveModal" style="border-radius: 10px; color: #312e81;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+          </svg>
+          <span>{{ 'تقديم طلب إجازة جديد' if current_lang == 'ar' else 'New Leave Request' }}</span>
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Leave Requests List -->
+  {% if not leave_requests %}
+  <div class="card border-0 shadow-sm text-center py-5" style="border-radius: 16px;">
+    <div class="card-body">
+      <div class="mb-3 text-muted">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" opacity="0.3" viewBox="0 0 16 16">
+          <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+          <path d="M4 4.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5"/>
+        </svg>
+      </div>
+      <h5 class="fw-bold text-dark">{{ 'لا توجد طلبات إجازة حالياً' if current_lang == 'ar' else 'No Leave Requests Found' }}</h5>
+      <p class="text-muted">{{ 'يمكنك البدء بتقديم طلب جديد باستخدام الزر أعلاه' if current_lang == 'ar' else 'Click above to submit a new request' }}</p>
+    </div>
+  </div>
+  {% else %}
+
+  <div class="row g-4">
+    {% for req in leave_requests %}
+    <div class="col-12">
+      <div class="card border-0 shadow-sm" style="border-radius: 16px; border: 1px solid rgba(226,232,240,0.8);">
+        
+        <!-- Request Top Bar -->
+        <div class="card-header bg-white p-3 p-md-4 border-bottom border-light d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-radius: 16px 16px 0 0;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="avatar-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border-radius: 50%; font-size: 1.2rem; background: #e0e7ff; color: #4338ca;">
+              {{ req.employee_name[0] if req.employee_name else 'E' }}
+            </div>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark" style="font-size: 1.1rem;">
+                {% if current_user.role == 'HR' %}
+                  <a href="{{ url_for('hr_employee_detail', user_id=req.employee_id) }}" class="text-decoration-none text-dark fw-bold hover-primary">
+                    👤 {{ req.employee_name }}
+                  </a>
+                {% else %}
+                  {{ req.employee_name }}
+                {% endif %}
+                {% if req.department %}<span class="text-muted fw-normal fs-6">({{ req.department }})</span>{% endif %}
+              </h5>
+              <div class="text-muted fs-7 d-flex align-items-center gap-2 mt-1">
+                <span>📅 {{ 'تاريخ الطلب:' if current_lang == 'ar' else 'Submitted:' }} {{ req.created_at }}</span>
+                <span>•</span>
+                <span class="badge bg-secondary-subtle text-secondary px-2 py-1" style="font-size: 0.75rem;">
+                  {{ req.leave_type }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Status Badge -->
+          <div class="d-flex align-items-center gap-2">
+            {% if req.status == 'approved' %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold fs-6" style="border-radius: 30px;">
+                ✅ {{ 'معتمد نهائياً' if current_lang == 'ar' else 'Approved' }}
+              </span>
+            {% elif req.status == 'rejected' %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fw-semibold fs-6" style="border-radius: 30px;">
+                ❌ {{ 'مرفوض' if current_lang == 'ar' else 'Rejected' }}
+              </span>
+            {% elif req.status == 'pending_hr' %}
+              <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 fw-semibold fs-6" style="border-radius: 30px;">
+                ⏳ {{ 'بانتظار موافقة HR' if current_lang == 'ar' else 'Awaiting HR Approval' }}
+              </span>
+            {% else %}
+              <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fw-semibold fs-6" style="border-radius: 30px;">
+                ⏱️ {{ 'بانتظار موافقة المديرين' if current_lang == 'ar' else 'Pending Managers' }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Request Details Body -->
+        <div class="card-body p-3 p-md-4 bg-light-subtle" style="border-radius: 0 0 16px 16px;">
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <div class="p-3 bg-white rounded-3 border">
+                <span class="text-muted d-block mb-1 fs-7">📆 {{ 'فترة الإجازة' if current_lang == 'ar' else 'Leave Period' }}</span>
+                <strong class="text-dark">{{ req.start_date }}</strong>
+                <span class="text-muted mx-1">إلى</span>
+                <strong class="text-dark">{{ req.end_date }}</strong>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-3 bg-white rounded-3 border">
+                <span class="text-muted d-block mb-1 fs-7">⏳ {{ 'المدة الإجمالية' if current_lang == 'ar' else 'Total Duration' }}</span>
+                <strong class="text-primary fs-5">{{ req.duration_days }}</strong>
+                <span class="text-dark fw-semibold">{{ 'أيام' if current_lang == 'ar' else 'days' }}</span>
+              </div>
+            </div>
+            <div class="col-md-5">
+              <div class="p-3 bg-white rounded-3 border">
+                <span class="text-muted d-block mb-1 fs-7">💬 {{ 'السبب / الملاحظات' if current_lang == 'ar' else 'Reason' }}</span>
+                <span class="text-dark">{{ req.reason if req.reason else ('بدون ملاحظات' if current_lang == 'ar' else 'No reason provided') }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- APPROVAL CHAIN TIMELINE -->
+          <div class="bg-white p-3 p-md-4 rounded-3 border">
+            <h6 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#4f46e5" viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                <path d="M8 3.5a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8.5 7.71V4a.5.5 0 0 0-.5-.5"/>
+              </svg>
+              <span>{{ 'تسلسل الموافقات وتتبع وقت الاستجابة' if current_lang == 'ar' else 'Approval Sequence & Duration Tracking' }}</span>
+            </h6>
+
+            <div class="approval-timeline position-relative">
+              <div class="row g-3">
+                {% for step in req.steps %}
+                <div class="col-12 col-md-6 col-lg-3">
+                  <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; background: {% if step.status == 'approved' %}#f0fdf4{% elif step.status == 'pending' %}#fffbeb{% elif step.status == 'rejected' %}#fef2f2{% else %}#f8fafc{% endif %}; border: 1px solid {% if step.status == 'approved' %}#bbf7d0{% elif step.status == 'pending' %}#fde68a{% elif step.status == 'rejected' %}#fecaca{% else %}#e2e8f0{% endif %} !important;">
+                    
+                    <div class="card-body p-3">
+                      <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="badge px-2 py-1" style="font-size: 0.72rem; {% if step.approver_role == 'HR' %}background:#e0e7ff; color:#3730a3;{% else %}background:#f3e8ff; color:#6b21a8;{% endif %}">
+                          {{ 'خطوة ' ~ loop.index ~ ': ' ~ ('إدارة HR' if step.approver_role == 'HR' else 'المدير المباشر') }}
+                        </span>
+                        
+                        {% if step.status == 'approved' %}
+                          <span class="text-success fw-bold">✓</span>
+                        {% elif step.status == 'pending' %}
+                          <span class="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+                        {% elif step.status == 'rejected' %}
+                          <span class="text-danger fw-bold">✕</span>
+                        {% else %}
+                          <span class="text-muted">🕒</span>
+                        {% endif %}
+                      </div>
+
+                      <h6 class="fw-bold mb-1 text-dark" style="font-size: 0.92rem;">
+                        {% if step.approver_name %}
+                          {{ step.approver_name }}
+                        {% else %}
+                          {{ 'قسم HR' if step.approver_role == 'HR' else 'مدير معني' }}
+                        {% endif %}
+                      </h6>
+
+                      <div class="mt-2 pt-2 border-top border-light-subtle">
+                        <div class="fw-semibold" style="font-size: 0.8rem; color: {% if step.status == 'approved' %}#15803d{% elif step.status == 'pending' %}#b45309{% elif step.status == 'rejected' %}#b91c1c{% else %}#64748b{% endif %};">
+                          {{ step.duration_text }}
+                        </div>
+                        
+                        {% if step.action_at %}
+                          <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                            🕒 {{ step.action_at }}
+                          </div>
+                        {% endif %}
+
+                        {% if step.comments %}
+                          <div class="mt-2 p-2 rounded bg-white border text-dark" style="font-size: 0.78rem;">
+                            💬 {{ step.comments }}
+                          </div>
+                        {% endif %}
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Action Bar (For Authorized Pending Approver) -->
+          {% if req.can_approve and req.status in ['pending_managers', 'pending_hr'] %}
+          <div class="mt-3 p-3 bg-warning-subtle border border-warning-subtle rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fs-4">⚡</span>
+              <div>
+                <strong class="text-dark d-block">{{ 'مطلوب اتخاذ قرارك على هذا الطلب' if current_lang == 'ar' else 'Action Required' }}</strong>
+                <span class="text-muted fs-7">{{ 'أنت المعني بالموافقة في المرحلة الحالية' if current_lang == 'ar' else 'You are the assigned approver for this stage' }}</span>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-success fw-semibold px-4 py-2 d-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal{{ req.id }}">
+                ✓ {{ 'قبول الطلب' if current_lang == 'ar' else 'Approve' }}
+              </button>
+              <button type="button" class="btn btn-outline-danger fw-semibold px-3 py-2 d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#rejectModal{{ req.id }}">
+                ✕ {{ 'رفض' if current_lang == 'ar' else 'Reject' }}
+              </button>
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block modal %}
+<!-- ALL MODALS PLACED OUTSIDE TRANSFORMED CONTAINERS TO PREVENT BACKDROP FREEZING -->
+
+<!-- Create Leave Modal -->
+<div class="modal fade" id="createLeaveModal" tabindex="-1" aria-labelledby="createLeaveModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; background-color: #ffffff !important; color: #1e293b !important;">
+      <form action="{{ url_for('requests.leaves_create') }}" method="POST">
+        <div class="modal-header p-4 border-0" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: white; border-radius: 16px 16px 0 0;">
+          <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="createLeaveModalLabel" style="color: white !important;">
+            <span>🌴</span>
+            <span>{{ 'تقديم طلب إجازة جديد' if current_lang == 'ar' else 'Submit New Leave Request' }}</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body p-4" style="background-color: #ffffff !important;">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="color: #1e293b !important;">{{ 'نوع الإجازة' if current_lang == 'ar' else 'Leave Type' }}</label>
+              <select name="leave_type" class="form-select py-2" style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" required>
+                <option value="إجازة سنوية">إجازة سنوية (Annual Leave)</option>
+                <option value="إجازة مرضية">إجازة مرضية (Sick Leave)</option>
+                <option value="إجازة عارضة">إجازة عارضة (Casual Leave)</option>
+                <option value="إجازة بدون راتب">إجازة بدون راتب (Unpaid Leave)</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <div class="p-3 rounded bg-light border text-secondary fs-7" style="background-color: #f8fafc !important; color: #475569 !important;">
+                💡 {{ 'سيتم توجيه الطلب تلقائياً لمديريك المباشرين للتسلسل في موافقته قبل الاعتماد النهائى من HR.' if current_lang == 'ar' else 'Request will automatically route through your manager approval chain before HR final approval.' }}
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="color: #1e293b !important;">{{ 'تاريخ بداية الإجازة' if current_lang == 'ar' else 'Start Date' }}</label>
+              <input type="date" id="startDateInput" name="start_date" class="form-control py-2" style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" required onchange="calculateDuration()">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="color: #1e293b !important;">{{ 'تاريخ نهاية الإجازة' if current_lang == 'ar' else 'End Date' }}</label>
+              <input type="date" id="endDateInput" name="end_date" class="form-control py-2" style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" required onchange="calculateDuration()">
+            </div>
+
+            <div class="col-12">
+              <div id="durationDisplay" class="p-3 rounded-3 fw-bold text-center d-none" style="background: #eef2ff !important; color: #4338ca !important; border: 1px solid #c7d2fe !important;">
+                ⏳ {{ 'المدة المحسوبة:' if current_lang == 'ar' else 'Calculated Duration:' }} <span id="daysCount">0</span> {{ 'أيام' if current_lang == 'ar' else 'days' }}
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-semibold" style="color: #1e293b !important;">{{ 'السبب / التفاصيل' if current_lang == 'ar' else 'Reason & Details' }}</label>
+              <textarea name="reason" class="form-control" rows="3" style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" placeholder="{{ 'اذكر سبب طلب الإجازة أو أي ملاحظات أخرى...' if current_lang == 'ar' else 'State your reason...' }}"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer p-3 border-0" style="background-color: #f8fafc !important; border-radius: 0 0 16px 16px;">
+          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">{{ 'إلغاء' if current_lang == 'ar' else 'Cancel' }}</button>
+          <button type="submit" class="btn btn-primary fw-bold px-4" style="background: #4f46e5; border-color: #4f46e5;">
+            {{ 'إرسال الطلب' if current_lang == 'ar' else 'Submit Request' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if leave_requests %}
+  {% for req in leave_requests %}
+    {% if req.can_approve and req.status in ['pending_managers', 'pending_hr'] %}
+    <!-- Approve Modal -->
+    <div class="modal fade" id="approveModal{{ req.id }}" tabindex="-1" aria-labelledby="approveModalLabel{{ req.id }}" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; background-color: #ffffff !important; color: #1e293b !important;">
+          <form action="{{ url_for('requests.leaves_approve', request_id=req.id) }}" method="POST">
+            <div class="modal-header bg-success text-white" style="border-radius: 14px 14px 0 0;">
+              <h5 class="modal-title fw-bold" id="approveModalLabel{{ req.id }}" style="color: white !important;">✓ {{ 'تأكيد موافقة طلب الإجازة' if current_lang == 'ar' else 'Approve Leave Request' }}</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" style="background-color: #ffffff !important;">
+              <p class="text-dark fw-semibold mb-2" style="color: #1e293b !important;">{{ 'هل أنت تأكد من الموافقة على طلب إجازة الموظف:' if current_lang == 'ar' else 'Approve request for:' }} <strong>{{ req.employee_name }}</strong>؟</p>
+              <div class="mb-3">
+                <label class="form-label fs-7 fw-semibold" style="color: #64748b !important;">{{ 'ملاحظات الموافقة (اختياري)' if current_lang == 'ar' else 'Approval Comments (Optional)' }}</label>
+                <textarea name="comments" class="form-control" rows="3" style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" placeholder="{{ 'أضف أي ملاحظات هنا...' if current_lang == 'ar' else 'Add comments...' }}"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer" style="background-color: #f8fafc !important; border-radius: 0 0 14px 14px;">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'إلغاء' if current_lang == 'ar' else 'Cancel' }}</button>
+              <button type="submit" class="btn btn-success fw-bold px-4">{{ 'تأكيد الموافقة' if current_lang == 'ar' else 'Confirm Approval' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div class="modal fade" id="rejectModal{{ req.id }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ req.id }}" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; background-color: #ffffff !important; color: #1e293b !important;">
+          <form action="{{ url_for('requests.leaves_reject', request_id=req.id) }}" method="POST">
+            <div class="modal-header bg-danger text-white" style="border-radius: 14px 14px 0 0;">
+              <h5 class="modal-title fw-bold" id="rejectModalLabel{{ req.id }}" style="color: white !important;">✕ {{ 'رفض طلب الإجازة' if current_lang == 'ar' else 'Reject Leave Request' }}</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" style="background-color: #ffffff !important;">
+              <p class="text-dark fw-semibold mb-2" style="color: #1e293b !important;">{{ 'يرجى توضيح سبب رفض طلب الإجازة للموظف:' if current_lang == 'ar' else 'Reason for rejecting request of:' }} <strong>{{ req.employee_name }}</strong>:</p>
+              <div class="mb-3">
+                <label class="form-label fs-7 fw-semibold" style="color: #64748b !important;">{{ 'سبب الرفض' if current_lang == 'ar' else 'Rejection Reason' }} <span class="text-danger">*</span></label>
+                <textarea name="comments" class="form-control" rows="3" required style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" placeholder="{{ 'اكتب سبب الرفض هنا...' if current_lang == 'ar' else 'Enter reason here...' }}"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer" style="background-color: #f8fafc !important; border-radius: 0 0 14px 14px;">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ 'تراجع' if current_lang == 'ar' else 'Cancel' }}</button>
+              <button type="submit" class="btn btn-danger fw-bold px-4">{{ 'تأكيد الرفض' if current_lang == 'ar' else 'Confirm Rejection' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+<script>
+function calculateDuration() {
+  const startEl = document.getElementById('startDateInput');
+  const endEl = document.getElementById('endDateInput');
+  const displayBox = document.getElementById('durationDisplay');
+  const countSpan = document.getElementById('daysCount');
+
+  if (!startEl || !endEl || !displayBox || !countSpan) return;
+
+  const startVal = startEl.value;
+  const endVal = endEl.value;
+
+  if (startVal && endVal) {
+    const sDate = new Date(startVal);
+    const eDate = new Date(endVal);
+    
+    if (eDate >= sDate) {
+      const diffTime = Math.abs(eDate - sDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      countSpan.innerText = diffDays;
+      displayBox.classList.remove('d-none');
+    } else {
+      displayBox.classList.add('d-none');
+    }
+  } else {
+    displayBox.classList.add('d-none');
+  }
+}
+</script>
+{% endblock %}

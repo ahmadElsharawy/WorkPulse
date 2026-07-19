@@ -153,6 +153,70 @@ body {
   color: #c7d2fe;
 }
 
+/* Custom Dropdown Styling */
+.wp-custom-dropdown {
+  background: rgba(15, 10, 46, 0.95) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(129, 140, 248, 0.25) !important;
+  border-radius: 12px !important;
+  padding: 0.5rem !important;
+  min-width: 220px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 1px rgba(129, 140, 248, 0.5) !important;
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wp-custom-dropdown .dropdown-item {
+  color: #e0e7ff !important;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.55rem 0.85rem;
+  border-radius: 8px;
+  transition: all var(--transition);
+}
+
+.wp-custom-dropdown .dropdown-item:hover,
+.wp-custom-dropdown .dropdown-item:focus {
+  background: rgba(129, 140, 248, 0.2) !important;
+  color: #ffffff !important;
+  transform: translateX(3px);
+}
+
+html[dir="rtl"] .wp-custom-dropdown .dropdown-item:hover,
+html[dir="rtl"] .wp-custom-dropdown .dropdown-item:focus {
+  transform: translateX(-3px);
+}
+
+.wp-custom-dropdown .dropdown-item svg {
+  color: #818cf8;
+  transition: transform var(--transition);
+}
+
+.wp-custom-dropdown .dropdown-item:hover svg {
+  color: #38bdf8;
+  transform: scale(1.15);
+}
+
+.wp-custom-dropdown .dropdown-item.text-danger-custom {
+  color: #fca5a5 !important;
+}
+
+.wp-custom-dropdown .dropdown-item.text-danger-custom:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+}
+
+.style-badge-dot {
+  font-size: 0.72rem !important;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
 /* ==========================================================
    PAGE ENTRY ANIMATION
    ========================================================== */
@@ -162,6 +226,30 @@ body {
 }
 .container.mt-4 {
   animation: fadeSlideUp .4s ease both;
+}
+
+/* Bootstrap Modal Fixes */
+.modal {
+  z-index: 1060 !important;
+}
+.modal-backdrop {
+  z-index: 1050 !important;
+  opacity: 0.5 !important;
+}
+.modal-content {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+}
+.modal-content .form-label {
+  color: #1e293b !important;
+}
+.modal-content .form-control,
+.modal-content .form-select {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 /* ==========================================================

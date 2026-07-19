@@ -173,7 +173,7 @@
             {% if task.creator_id == task.employee_id %}
               <span class='text-muted small'>{{ 'ذاتي' if current_lang == 'ar' else 'Self' }}</span>
             {% else %}
-              <strong>{{ task.creator_name }}</strong>
+              <a href="{{ url_for('hr_employee_detail', user_id=task.creator_id) }}" class="fw-bold text-decoration-none text-dark">{{ task.creator_name }}</a>
             {% endif %}
           </td>
         </tr>

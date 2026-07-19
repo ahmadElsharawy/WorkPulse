@@ -98,8 +98,309 @@ def register_hr_routes(app):
                 'worked_hours': worked_hours,
                 'remaining_hours': remaining
             })
+
+        # Fetch Leave Requests history & approval steps for this employee
+        from workpulse.routes.requests import format_duration_arabic, calculate_elapsed_time
+        leave_requests_rows = db.execute('''
+            SELECT lr.*, u.full_name as employee_name, u.username as employee_username,
+                   u.department, u.position
+            FROM leave_requests lr
+            JOIN users u ON lr.employee_id = u.id
+            WHERE lr.employee_id = ?
+            ORDER BY lr.created_at DESC
+        ''', (user_id,)).fetchall()
+
+        leave_requests_data = []
+        for req in leave_requests_rows:
+            req_dict = dict(req)
+            steps_query = '''
+                SELECT lra.*, u.full_name as approver_name, u.role as approver_user_role, u.position as approver_position
+                FROM leave_request_approvals lra
+                LEFT JOIN users u ON lra.approver_id = u.id
+                WHERE lra.leave_request_id = ?
+                ORDER BY lra.approval_order ASC
+            '''
+            steps = db.execute(steps_query, (req['id'],)).fetchall()
+            processed_steps = []
+            for step in steps:
+                s_dict = dict(step)
+                if s_dict['status'] == 'approved':
+                    resp_sec = s_dict.get('response_time_seconds') or 0
+                    s_dict['duration_text'] = f"تمت الموافقة خلال {format_duration_arabic(resp_sec)}"
+                elif s_dict['status'] == 'rejected':
+                    resp_sec = s_dict.get('response_time_seconds') or 0
+                    s_dict['duration_text'] = f"تم الرفض خلال {format_duration_arabic(resp_sec)}"
+                elif s_dict['status'] == 'pending':
+                    elapsed_sec = calculate_elapsed_time(s_dict.get('assigned_at'))
+                    s_dict['duration_text'] = f"معلق منذ {format_duration_arabic(elapsed_sec)}"
+                else:
+                    s_dict['duration_text'] = 'بانتظار دور الموافقة'
+                processed_steps.append(s_dict)
+            req_dict['steps'] = processed_steps
+            leave_requests_data.append(req_dict)
             
-        return render_template('hr/hr_employee_detail.html', employee=employee, projects=project_details)
+        # Calculate UAE Gratuity & Leave Balance
+        from workpulse.helpers import calculate_uae_gratuity_and_leaves
+        gratuity_info = calculate_uae_gratuity_and_leaves(employee, db)
+
+        return render_template(
+            'hr/hr_employee_detail.html',
+            employee=employee,
+            projects=project_details,
+            leave_requests=leave_requests_data,
+            gratuity_info=gratuity_info
+        )
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service')
+    @role_required('HR')
+    def hr_employee_end_of_service(user_id):
+        db = get_db()
+        employee = db.execute('SELECT * FROM users WHERE id = ? AND role != ?', (user_id, 'HR')).fetchone()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('hr_employees'))
+            
+        from workpulse.helpers import calculate_uae_gratuity_and_leaves
+        gratuity_info = calculate_uae_gratuity_and_leaves(employee, db)
+        
+        return render_template(
+            'end_of_service.html',
+            employee=employee,
+            gratuity_info=gratuity_info,
+            is_hr_view=True
+        )
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service/save-adjustment', methods=['POST'])
+    @role_required('HR')
+    def save_eos_adjustment(user_id):
+        db = get_db()
+        employee = db.execute('SELECT * FROM users WHERE id = ? AND role != ?', (user_id, 'HR')).fetchone()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('hr_employees'))
+
+        sick_leave_days = float(request.form.get('sick_leave_days') or 0.0)
+        parental_leave_days = float(request.form.get('parental_leave_days') or 0.0)
+        bereavement_leave_days = float(request.form.get('bereavement_leave_days') or 0.0)
+        study_leave_days = float(request.form.get('study_leave_days') or 0.0)
+        hajj_leave_days = float(request.form.get('hajj_leave_days') or 0.0)
+        other_leave_days = float(request.form.get('other_leave_days') or 0.0)
+        
+        additional_additions = float(request.form.get('additional_additions') or 0.0)
+        additional_deductions = float(request.form.get('additional_deductions') or 0.0)
+        gratuity_days_deduction = float(request.form.get('gratuity_days_deduction') or 0.0)
+        gratuity_days_deduction_reason = request.form.get('gratuity_days_deduction_reason', '').strip()
+        notes = request.form.get('notes', '').strip()
+        
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+        user_name = current_user.full_name or current_user.username
+        
+        db.execute('''
+            INSERT INTO eos_settlement_adjustments (
+                employee_id, sick_leave_days, parental_leave_days, bereavement_leave_days,
+                study_leave_days, hajj_leave_days, other_leave_days,
+                additional_additions, additional_deductions,
+                gratuity_days_deduction, gratuity_days_deduction_reason,
+                notes, updated_by, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(employee_id) DO UPDATE SET
+                sick_leave_days = excluded.sick_leave_days,
+                parental_leave_days = excluded.parental_leave_days,
+                bereavement_leave_days = excluded.bereavement_leave_days,
+                study_leave_days = excluded.study_leave_days,
+                hajj_leave_days = excluded.hajj_leave_days,
+                other_leave_days = excluded.other_leave_days,
+                additional_additions = excluded.additional_additions,
+                additional_deductions = excluded.additional_deductions,
+                gratuity_days_deduction = excluded.gratuity_days_deduction,
+                gratuity_days_deduction_reason = excluded.gratuity_days_deduction_reason,
+                notes = excluded.notes,
+                updated_by = excluded.updated_by,
+                updated_at = excluded.updated_at
+        ''', (
+            user_id, sick_leave_days, parental_leave_days, bereavement_leave_days,
+            study_leave_days, hajj_leave_days, other_leave_days,
+            additional_additions, additional_deductions,
+            gratuity_days_deduction, gratuity_days_deduction_reason,
+            notes, user_name, now_str
+        ))
+        db.commit()
+        
+        flash('تم حفظ وتحديث تعديلات تسوية نهاية الخدمة بنجاح.' if session.get('lang') == 'ar' else 'End of service settlement adjustments saved successfully.', 'success')
+        return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service/add-leave', methods=['POST'])
+    @role_required('HR')
+    def add_eos_leave(user_id):
+        db = get_db()
+        employee = db.execute('SELECT * FROM users WHERE id = ? AND role != ?', (user_id, 'HR')).fetchone()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('hr_employees'))
+
+        leave_type = request.form.get('leave_type', 'annual').strip()
+        start_date_str = request.form.get('start_date', '').strip()
+        end_date_str = request.form.get('end_date', '').strip()
+        reason = request.form.get('reason', '').strip()
+
+        if not start_date_str or not end_date_str:
+            flash('يرجى تحديد تاريخ البداية وتاريخ النهاية للإجازة.' if session.get('lang') == 'ar' else 'Please specify start and end dates.', 'danger')
+            return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+        try:
+            start_dt = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_dt = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('صيغة التاريخ غير صحيحة.' if session.get('lang') == 'ar' else 'Invalid date format.', 'danger')
+            return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+        if end_dt < start_dt:
+            flash('تاريخ النهاية يجب أن يكون مساوياً أو بعد تاريخ البداية.' if session.get('lang') == 'ar' else 'End date must be after or equal to start date.', 'danger')
+            return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+        duration_days = (end_dt - start_dt).days + 1
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        db.execute('''
+            INSERT INTO leave_requests (
+                employee_id, leave_type, start_date, end_date, duration_days, reason, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'approved', ?, ?)
+        ''', (user_id, leave_type, start_date_str, end_date_str, duration_days, reason, now_str, now_str))
+        db.commit()
+
+        flash(f'تم إدراج وتسجيل إجازة ({leave_type}) لمدة {duration_days} يوم بنجاح من {start_date_str} إلى {end_date_str}.' if session.get('lang') == 'ar' else 'Leave added successfully.', 'success')
+        return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service/delete-leave/<int:leave_id>', methods=['POST'])
+    @role_required('HR')
+    def delete_eos_leave(user_id, leave_id):
+        db = get_db()
+        db.execute('DELETE FROM leave_requests WHERE id = ? AND employee_id = ?', (leave_id, user_id))
+        db.commit()
+        flash('تم إلغاء وحذف سجل الإجازة بنجاح.' if session.get('lang') == 'ar' else 'Leave entry deleted successfully.', 'warning')
+        return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service/add-financial-item', methods=['POST'])
+    @role_required('HR')
+    def add_financial_item(user_id):
+        db = get_db()
+        employee = db.execute('SELECT * FROM users WHERE id = ? AND role != ?', (user_id, 'HR')).fetchone()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('hr_employees'))
+
+        item_type = request.form.get('item_type', 'addition').strip()
+        amount_str = request.form.get('amount', '0').strip()
+        reason = request.form.get('reason', '').strip()
+
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            amount = 0.0
+
+        if amount <= 0:
+            flash('يرجى تحديد مبلغ مالي أكبر من صفر.' if session.get('lang') == 'ar' else 'Please enter a valid amount.', 'danger')
+            return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+        if not reason:
+            flash('يرجى تحديد مسمى وسبب الإضافة أو الخصم المالي.' if session.get('lang') == 'ar' else 'Please enter the reason for this financial item.', 'danger')
+            return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+        user_name = current_user.full_name or current_user.username
+
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS eos_financial_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id INTEGER NOT NULL,
+                item_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                reason TEXT NOT NULL,
+                created_by TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+
+        db.execute('''
+            INSERT INTO eos_financial_items (employee_id, item_type, amount, reason, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (user_id, item_type, amount, reason, user_name, now_str))
+        db.commit()
+
+        type_text = 'إضافة' if item_type == 'addition' else 'خصم'
+        flash(f'تم إدراج بند {type_text} بمبلغ {amount} درهم بسبب ({reason}) بنجاح.' if session.get('lang') == 'ar' else 'Financial item added successfully.', 'success')
+        return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service/delete-financial-item/<int:item_id>', methods=['POST'])
+    @role_required('HR')
+    def delete_financial_item(user_id, item_id):
+        db = get_db()
+        db.execute('DELETE FROM eos_financial_items WHERE id = ? AND employee_id = ?', (item_id, user_id))
+        db.commit()
+        flash('تم إلغاء وحذف البند المالي بنجاح.' if session.get('lang') == 'ar' else 'Financial item deleted successfully.', 'warning')
+        return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service/add-gratuity-day-item', methods=['POST'])
+    @role_required('HR')
+    def add_gratuity_day_item(user_id):
+        db = get_db()
+        employee = db.execute('SELECT * FROM users WHERE id = ? AND role != ?', (user_id, 'HR')).fetchone()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('hr_employees'))
+
+        item_type = request.form.get('item_type', 'deduction').strip()
+        days_str = request.form.get('days_count', '0').strip()
+        reason = request.form.get('reason', '').strip()
+
+        try:
+            days_count = float(days_str)
+        except ValueError:
+            days_count = 0.0
+
+        if days_count <= 0:
+            flash('يرجى تحديد عدد أيام أكبر من صفر.' if session.get('lang') == 'ar' else 'Please enter a valid number of days.', 'danger')
+            return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+        if not reason:
+            flash('يرجى تحديد سبب ومبرر تعديل أيام المكافأة.' if session.get('lang') == 'ar' else 'Please enter the reason for this day adjustment.', 'danger')
+            return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+        user_name = current_user.full_name or current_user.username
+
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS eos_gratuity_day_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id INTEGER NOT NULL,
+                item_type TEXT NOT NULL,
+                days_count REAL NOT NULL,
+                reason TEXT NOT NULL,
+                created_by TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+
+        db.execute('''
+            INSERT INTO eos_gratuity_day_items (employee_id, item_type, days_count, reason, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (user_id, item_type, days_count, reason, user_name, now_str))
+        db.commit()
+
+        type_text = 'إضافة' if item_type == 'addition' else 'خصم'
+        flash(f'تم تسجيل بند {type_text} {days_count} أيام مكافأة بسبب ({reason}) بنجاح.' if session.get('lang') == 'ar' else 'Gratuity day adjustment item added successfully.', 'success')
+        return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
+
+    @app.route('/hr/employees/<int:user_id>/end-of-service/delete-gratuity-day-item/<int:item_id>', methods=['POST'])
+    @role_required('HR')
+    def delete_gratuity_day_item(user_id, item_id):
+        db = get_db()
+        db.execute('DELETE FROM eos_gratuity_day_items WHERE id = ? AND employee_id = ?', (item_id, user_id))
+        db.commit()
+        flash('تم إلغاء وحذف بند أيام المكافأة بنجاح.' if session.get('lang') == 'ar' else 'Gratuity day item deleted successfully.', 'warning')
+        return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
 
     @app.route('/hr/projects/<int:project_id>')
     @role_required('HR')
@@ -169,8 +470,60 @@ def register_hr_routes(app):
                 'worked_hours': worked_hours,
                 'remaining_hours': remaining
             })
+
+        # Fetch Leave Requests history & approval steps for printable report
+        from workpulse.routes.requests import format_duration_arabic, calculate_elapsed_time
+        leave_requests_rows = db.execute('''
+            SELECT lr.*, u.full_name as employee_name, u.username as employee_username,
+                   u.department, u.position
+            FROM leave_requests lr
+            JOIN users u ON lr.employee_id = u.id
+            WHERE lr.employee_id = ?
+            ORDER BY lr.created_at DESC
+        ''', (user_id,)).fetchall()
+
+        leave_requests_data = []
+        for req in leave_requests_rows:
+            req_dict = dict(req)
+            steps_query = '''
+                SELECT lra.*, u.full_name as approver_name, u.role as approver_user_role, u.position as approver_position
+                FROM leave_request_approvals lra
+                LEFT JOIN users u ON lra.approver_id = u.id
+                WHERE lra.leave_request_id = ?
+                ORDER BY lra.approval_order ASC
+            '''
+            steps = db.execute(steps_query, (req['id'],)).fetchall()
+            processed_steps = []
+            for step in steps:
+                s_dict = dict(step)
+                if s_dict['status'] == 'approved':
+                    resp_sec = s_dict.get('response_time_seconds') or 0
+                    s_dict['duration_text'] = f"تمت الموافقة خلال {format_duration_arabic(resp_sec)}"
+                elif s_dict['status'] == 'rejected':
+                    resp_sec = s_dict.get('response_time_seconds') or 0
+                    s_dict['duration_text'] = f"تم الرفض خلال {format_duration_arabic(resp_sec)}"
+                elif s_dict['status'] == 'pending':
+                    elapsed_sec = calculate_elapsed_time(s_dict.get('assigned_at'))
+                    s_dict['duration_text'] = f"معلق منذ {format_duration_arabic(elapsed_sec)}"
+                else:
+                    s_dict['duration_text'] = 'بانتظار دور الموافقة'
+                processed_steps.append(s_dict)
+            req_dict['steps'] = processed_steps
+            leave_requests_data.append(req_dict)
             
-        return render_template('print/print_employee_detail.html', employee=employee, projects=project_details, generated_by=current_user.full_name or current_user.username, generated_on=datetime.now().strftime('%Y-%m-%d %H:%M'))
+        # Calculate UAE Gratuity & Leave Balance
+        from workpulse.helpers import calculate_uae_gratuity_and_leaves
+        gratuity_info = calculate_uae_gratuity_and_leaves(employee, db)
+
+        return render_template(
+            'print/print_employee_detail.html',
+            employee=employee,
+            projects=project_details,
+            leave_requests=leave_requests_data,
+            gratuity_info=gratuity_info,
+            generated_by=current_user.full_name or current_user.username,
+            generated_on=datetime.now().strftime('%Y-%m-%d %H:%M')
+        )
 
     @app.route('/api/v1/employees/<int:user_id>/pdf')
     @role_required('HR')
@@ -291,6 +644,16 @@ def register_hr_routes(app):
             department = request.form.get('department', '')
             residence_permit_end_date = request.form.get('residence_permit_end_date', '')
             hire_date = request.form.get('hire_date', '')
+            termination_date = request.form.get('termination_date', '')
+            try:
+                basic_salary = float(request.form.get('basic_salary', 0) or 0)
+            except (ValueError, TypeError):
+                basic_salary = 0.0
+            try:
+                total_salary = float(request.form.get('total_salary', 0) or 0)
+            except (ValueError, TypeError):
+                total_salary = 0.0
+
             manager_usernames = request.form.getlist('managers')
             subordinate_usernames = request.form.getlist('subordinates')
             project_ids = request.form.getlist('projects')
@@ -298,8 +661,10 @@ def register_hr_routes(app):
             pwd_hash = bcrypt.generate_password_hash(password).decode('utf-8')
             
             try:
-                db.execute('INSERT INTO users (full_name, username, password_hash, role, position, email, phone, employee_number, department, residence_permit_end_date, hire_date) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-                           (full_name, username, pwd_hash, role, position, email, phone, employee_number, department, residence_permit_end_date, hire_date))
+                db.execute('''
+                    INSERT INTO users (full_name, username, password_hash, role, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, termination_date, basic_salary, total_salary)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ''', (full_name, username, pwd_hash, role, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, termination_date, basic_salary, total_salary))
                 db.commit()
                 
                 employee_row = db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
@@ -352,6 +717,16 @@ def register_hr_routes(app):
             department = request.form.get('department', '')
             residence_permit_end_date = request.form.get('residence_permit_end_date', '')
             hire_date = request.form.get('hire_date', '')
+            termination_date = request.form.get('termination_date', '')
+            try:
+                basic_salary = float(request.form.get('basic_salary', 0) or 0)
+            except (ValueError, TypeError):
+                basic_salary = 0.0
+            try:
+                total_salary = float(request.form.get('total_salary', 0) or 0)
+            except (ValueError, TypeError):
+                total_salary = 0.0
+
             manager_usernames = request.form.getlist('managers')
             subordinate_usernames = request.form.getlist('subordinates')
             project_ids = request.form.getlist('projects')
@@ -359,11 +734,18 @@ def register_hr_routes(app):
             try:
                 if password:
                     pwd_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-                    db.execute('UPDATE users SET full_name = ?, username = ?, password_hash = ?, position = ?, email = ?, phone = ?, employee_number = ?, department = ?, residence_permit_end_date = ?, hire_date = ? WHERE id = ?',
-                               (full_name, username, pwd_hash, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, user_id))
+                    db.execute('''
+                        UPDATE users 
+                        SET full_name = ?, username = ?, password_hash = ?, position = ?, email = ?, phone = ?, employee_number = ?, department = ?, residence_permit_end_date = ?, hire_date = ?, termination_date = ?, basic_salary = ?, total_salary = ? 
+                        WHERE id = ?
+                    ''', (full_name, username, pwd_hash, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, termination_date, basic_salary, total_salary, user_id))
                 else:
-                    db.execute('UPDATE users SET full_name = ?, username = ?, position = ?, email = ?, phone = ?, employee_number = ?, department = ?, residence_permit_end_date = ?, hire_date = ? WHERE id = ?',
-                               (full_name, username, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, user_id))
+                    db.execute('''
+                        UPDATE users 
+                        SET full_name = ?, username = ?, position = ?, email = ?, phone = ?, employee_number = ?, department = ?, residence_permit_end_date = ?, hire_date = ?, termination_date = ?, basic_salary = ?, total_salary = ? 
+                        WHERE id = ?
+                    ''', (full_name, username, position, email, phone, employee_number, department, residence_permit_end_date, hire_date, termination_date, basic_salary, total_salary, user_id))
+                db.commit()
                 db.commit()
                 
                 manager_ids = []

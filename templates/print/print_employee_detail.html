@@ -2,7 +2,7 @@
 <html lang='{{ current_lang }}' dir="{% if current_lang == 'ar' %}rtl{% else %}ltr{% endif %}">
 <head>
     <meta charset='utf-8'>
-    <title>{{ employee.full_name }} – {{ 'تقرير الموظف' if current_lang == 'ar' else 'Employee Report' }}</title>
+    <title>{{ employee.full_name }} – {{ 'تقرير الموظف الشامل' if current_lang == 'ar' else 'Comprehensive Employee Report' }}</title>
     <link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap' rel='stylesheet'>
     {% if current_lang == 'ar' %}
     <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css' rel='stylesheet'>
@@ -13,26 +13,40 @@
         body {
             font-family: 'Inter', sans-serif;
             background: #fff;
-            color: #333;
-            padding: 30px;
+            color: #1e293b;
+            padding: 24px;
         }
         .report-header {
-            border-bottom: 2px solid #333;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            border-bottom: 2px solid #1e293b;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
         }
         .metadata-table th, .metadata-table td {
-            padding: 4px 10px;
-            font-size: 0.9rem;
+            padding: 5px 12px;
+            font-size: 0.85rem;
         }
         .report-table th {
-            background-color: #f3f4f6 !important;
-            color: #1f2937 !important;
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
             font-weight: 600;
+        }
+        .section-header {
+            border-left: 4px solid #4f46e5;
+            padding-left: 10px;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        html[dir="rtl"] .section-header {
+            border-left: none;
+            border-right: 4px solid #4f46e5;
+            padding-left: 0;
+            padding-right: 10px;
         }
         @media print {
             @page {
-                size: landscape;
+                size: A4 portrait;
                 margin: 10mm;
             }
             body {
@@ -42,21 +56,24 @@
                 display: none !important;
             }
             .report-table {
-                font-size: 0.7rem !important;
+                font-size: 0.78rem !important;
             }
             .report-table th, .report-table td {
-                padding: 4px 6px !important;
+                padding: 4px 8px !important;
+            }
+            .page-break {
+                page-break-before: always;
             }
         }
     </style>
 </head>
 <body>
 
-<div class="container-fluid">
+<div class="container-fluid px-0">
     <div class="no-print d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded border">
-        <span>{{ 'جاهز للطباعة. استخدم زر الطباعة أو اضغط Ctrl+P لحفظه كملف PDF.' if current_lang == 'ar' else 'Print Ready. Click Print or press Ctrl+P to save as PDF.' }}</span>
+        <span class="fw-semibold">{{ 'التقرير شامل لكافة بيانات الموظف والمشاريع وسجل الإجازات والطلبات والتعليقات.' if current_lang == 'ar' else 'Full report including profile, projects, and complete leave requests archive with comments.' }}</span>
         <div>
-            <button onclick="window.print();" class="btn btn-primary">{{ 'طباعة' if current_lang == 'ar' else 'Print' }}</button>
+            <button onclick="window.print();" class="btn btn-primary fw-bold px-4">{{ 'طباعة التقرير / حفظ PDF' if current_lang == 'ar' else 'Print Report / Save PDF' }}</button>
             <button onclick="window.close();" class="btn btn-secondary ms-2">{{ 'إغلاق' if current_lang == 'ar' else 'Close' }}</button>
         </div>
     </div>
@@ -64,13 +81,13 @@
     <!-- Report Header -->
     <div class="report-header d-flex justify-content-between align-items-start">
         <div>
-            <h2 class="fw-bold mb-1">WorkPulse</h2>
-            <h4 class="text-muted">{{ _('employee_details') }}</h4>
+            <h2 class="fw-bold mb-1" style="color: #312e81;">WorkPulse</h2>
+            <h4 class="text-secondary fw-semibold">{{ 'تقرير الملف الشخصي وسجل الطلبات الشامل' if current_lang == 'ar' else 'Comprehensive Employee Profile & Requests Report' }}</h4>
         </div>
-        <div>
+        <div style="min-width: 320px;">
             <table class="table table-sm table-bordered metadata-table mb-0">
                 <tr>
-                    <th class="table-light">{{ _('full_name') }}</th>
+                    <th class="table-light" style="width: 40%;">{{ _('full_name') }}</th>
                     <td><strong>{{ employee.full_name }}</strong></td>
                 </tr>
                 <tr>
@@ -81,10 +98,62 @@
                     <th class="table-light">{{ _('position') }}</th>
                     <td>{{ employee.position or '–' }}</td>
                 </tr>
-                {% if employee.hire_date %}
+                {% if employee.department %}
+                <tr>
+                    <th class="table-light">{{ _('department') }}</th>
+                    <td>{{ employee.department }}</td>
+                </tr>
+                {% endif %}
+                {% if employee.email %}
+                <tr>
+                    <th class="table-light">{{ _('email') }}</th>
+                    <td>{{ employee.email }}</td>
+                </tr>
+                {% endif %}
+                {% if employee.phone %}
+                <tr>
+                    <th class="table-light">{{ _('phone') }}</th>
+                    <td>{{ employee.phone }}</td>
+                </tr>
+                {% endif %}
+                {% if employee.employee_number %}
+                <tr>
+                    <th class="table-light">{{ _('employee_number') }}</th>
+                    <td>{{ employee.employee_number }}</td>
+                </tr>
+                {% endif %}
                 <tr>
                     <th class="table-light">{{ _('hire_date') }}</th>
-                    <td>{{ employee.hire_date }}</td>
+                    <td>{{ employee.hire_date or ('غير محدد' if current_lang == 'ar' else 'Not set') }}</td>
+                </tr>
+                <tr>
+                    <th class="table-light">{{ 'حالة العمل / آخر يوم' if current_lang == 'ar' else 'Status / End Date' }}</th>
+                    <td>
+                        {% if employee.termination_date %}
+                            <strong class="text-danger">📅 {{ employee.termination_date }}</strong>
+                        {% else %}
+                            <span class="text-success fw-bold">🟢 {{ 'على رأس العمل (ما زال يعمل معنا)' if current_lang == 'ar' else 'Active' }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if employee.basic_salary or employee.total_salary %}
+                <tr>
+                    <th class="table-light">{{ 'الراتب الأساسي / الإجمالي' if current_lang == 'ar' else 'Basic / Total Salary' }}</th>
+                    <td>💵 <strong>{{ "%.2f"|format(employee.basic_salary or 0) }}</strong> / 💎 <strong>{{ "%.2f"|format(employee.total_salary or 0) }}</strong></td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <th class="table-light">{{ 'مكافأة نهاية الخدمة' if current_lang == 'ar' else 'End of Service Gratuity' }}</th>
+                    <td>💰 <strong>{{ "%.2f"|format(gratuity_info.gratuity_amount) }}</strong> <small class="text-muted">({{ gratuity_info.tenure_text }})</small></td>
+                </tr>
+                <tr>
+                    <th class="table-light">{{ 'رصيد الإجازات السنوية الصافي' if current_lang == 'ar' else 'Net Annual Leave Balance' }}</th>
+                    <td>🌴 <strong>{{ "%.1f"|format(gratuity_info.remaining_leave_days) }} {{ 'أيام' if current_lang == 'ar' else 'days' }}</strong> <small class="text-muted">({{ 'المكتسب:' if current_lang == 'ar' else 'Accrued:' }} {{ "%.1f"|format(gratuity_info.accrued_leave_days) }} - {{ 'المستهلك:' if current_lang == 'ar' else 'Used:' }} {{ "%.1f"|format(gratuity_info.used_leave_days) }})</small></td>
+                </tr>
+                {% if employee.residence_permit_end_date %}
+                <tr>
+                    <th class="table-light">{{ _('residence_permit_end_date') }}</th>
+                    <td>{{ employee.residence_permit_end_date }}</td>
                 </tr>
                 {% endif %}
                 <tr>
@@ -99,9 +168,9 @@
         </div>
     </div>
 
-    <!-- Summary of Projects -->
-    <h5 class="fw-bold mb-3">{{ 'المشاريع المسندة ورصيد الساعات' if current_lang == 'ar' else 'Assigned Projects & Hours Balance' }}</h5>
-    <table class="table table-bordered table-striped report-table align-middle">
+    <!-- Section 1: Summary of Projects -->
+    <h5 class="section-header h6 mb-3">📁 {{ 'المشاريع المسندة ورصيد الساعات' if current_lang == 'ar' else 'Assigned Projects & Hours Balance' }}</h5>
+    <table class="table table-bordered table-striped report-table align-middle mb-4">
         <thead>
             <tr>
                 <th>{{ _('project_name') }}</th>
@@ -128,7 +197,7 @@
                     {% if proj.allocated_hours == 0 %}
                         {{ _('unlimited') }}
                     {% else %}
-                        <span {% if proj.remaining_hours < 0 %}class="text-danger fw-bold" style="color: var(--bs-danger); font-weight: bold;"{% endif %}>
+                        <span {% if proj.remaining_hours < 0 %}class="text-danger fw-bold"{% endif %}>
                             {{ proj.remaining_hours|format_balance(proj.allocated_hours) }} {{ 'ساعة' if current_lang == 'ar' else 'hrs' }}
                         </span>
                     {% endif %}
@@ -136,11 +205,115 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="4" class="text-center py-4 text-muted">{{ 'لا توجد مشاريع مسندة لهذا الموظف.' if current_lang == 'ar' else 'No projects assigned.' }}</td>
+                <td colspan="4" class="text-center py-3 text-muted">{{ 'لا توجد مشاريع مسندة لهذا الموظف.' if current_lang == 'ar' else 'No projects assigned.' }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Section 2: Complete Requests & Approvals History -->
+    <h5 class="section-header h6 mb-3">📝 {{ 'سجل وتاريخ كافة الطلبات والإجازات والتعليقات' if current_lang == 'ar' else 'Complete Requests, Approvals & Comments Archive' }}</h5>
+    <span class="badge bg-indigo-subtle text-indigo mb-3 px-3 py-1.5" style="background: #e0e7ff; color: #4338ca; border-radius: 20px;">
+        🌴 {{ 'قسم طلبات الإجازات' if current_lang == 'ar' else 'Leave Requests Category' }}
+    </span>
+
+    {% if not leave_requests %}
+    <div class="p-3 text-center text-muted border rounded mb-4">
+        {{ 'لا توجد طلبات إجازة سابقة لهذا الموظف.' if current_lang == 'ar' else 'No leave requests history.' }}
+    </div>
+    {% else %}
+
+    {% for req in leave_requests %}
+    <div class="card mb-4 border shadow-none" style="border-color: #cbd5e1 !important;">
+        <div class="card-header bg-light p-3 d-flex justify-content-between align-items-center">
+            <div>
+                <strong class="fs-6 me-2">{{ req.leave_type }}</strong>
+                <span class="text-muted fs-7">
+                    (من <strong>{{ req.start_date }}</strong> إلى <strong>{{ req.end_date }}</strong> · المدة: <strong>{{ req.duration_days }} {{ 'أيام' if current_lang == 'ar' else 'days' }}</strong>)
+                </span>
+            </div>
+            <div>
+                {% if req.status == 'approved' %}
+                    <span class="badge bg-success px-3 py-1.5 fw-bold">✅ {{ 'معتمد نهائياً' if current_lang == 'ar' else 'Approved' }}</span>
+                {% elif req.status == 'rejected' %}
+                    <span class="badge bg-danger px-3 py-1.5 fw-bold">❌ {{ 'مرفوض' if current_lang == 'ar' else 'Rejected' }}</span>
+                {% elif req.status == 'pending_hr' %}
+                    <span class="badge bg-info text-dark px-3 py-1.5 fw-bold">⏳ {{ 'بانتظار موافقة HR' if current_lang == 'ar' else 'Pending HR' }}</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark px-3 py-1.5 fw-bold">⏱️ {{ 'بانتظار موافقة المديرين' if current_lang == 'ar' else 'Pending Managers' }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-body p-3">
+            {% if req.reason %}
+            <div class="mb-3 p-2 bg-light rounded border fs-7">
+                <strong>💬 {{ 'سبب الطلب / التفاصيل:' if current_lang == 'ar' else 'Reason:' }}</strong> {{ req.reason }}
+            </div>
+            {% endif %}
+
+            <h6 class="fw-bold fs-7 mb-2">⚡ {{ 'تسلسل الموافقات والقرارات والتعليقات:' if current_lang == 'ar' else 'Approval Steps, Decisions & Comments:' }}</h6>
+            
+            <table class="table table-sm table-bordered report-table mb-0 align-middle">
+                <thead>
+                    <tr class="table-light">
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 30%;">{{ 'المسؤول / الصفة' if current_lang == 'ar' else 'Approver / Role' }}</th>
+                        <th style="width: 20%;">{{ 'الحالة والقرار' if current_lang == 'ar' else 'Decision Status' }}</th>
+                        <th style="width: 20%;">{{ 'الوقت المستغرق والتاريخ' if current_lang == 'ar' else 'Response Duration & Time' }}</th>
+                        <th style="width: 25%;">{{ 'التعليقات والملاحظات' if current_lang == 'ar' else 'Comments & Notes' }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in req.steps %}
+                    <tr>
+                        <td class="text-center font-monospace">{{ loop.index }}</td>
+                        <td>
+                            <strong>
+                                {% if step.approver_name %}
+                                    {{ step.approver_name }}
+                                {% else %}
+                                    {{ 'إدارة HR' if step.approver_role == 'HR' else 'مدير معني' }}
+                                {% endif %}
+                            </strong>
+                            <span class="text-muted small">({{ step.approver_role }})</span>
+                        </td>
+                        <td>
+                            {% if step.status == 'approved' %}
+                                <span class="text-success fw-bold">✓ {{ 'موافق' if current_lang == 'ar' else 'Approved' }}</span>
+                            {% elif step.status == 'pending' %}
+                                <span class="text-warning fw-bold">⏳ {{ 'معلق حالياً' if current_lang == 'ar' else 'Pending' }}</span>
+                            {% elif step.status == 'rejected' %}
+                                <span class="text-danger fw-bold">✕ {{ 'مرفوض' if current_lang == 'ar' else 'Rejected' }}</span>
+                            {% else %}
+                                <span class="text-muted">🕒 {{ 'بانتظار الدور' if current_lang == 'ar' else 'Waiting' }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ step.duration_text }}</div>
+                            {% if step.action_at %}
+                                <small class="text-muted">{{ step.action_at }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if step.comments %}
+                                <div class="p-1 px-2 rounded bg-light border" style="border-left: 3px solid {% if step.status == 'rejected' %}#ef4444{% else %}#10b981{% endif %} !important;">
+                                    💬 {{ step.comments }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small"><em>{{ 'بدون تعليق' if current_lang == 'ar' else 'No comments' }}</em></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% endif %}
+
 </div>
 
 <script>

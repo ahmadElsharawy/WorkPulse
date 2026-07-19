@@ -82,7 +82,10 @@ def init_db():
             employee_number TEXT,
             department TEXT,
             residence_permit_end_date TEXT,
-            hire_date TEXT
+            hire_date TEXT,
+            termination_date TEXT,
+            basic_salary REAL DEFAULT 0,
+            total_salary REAL DEFAULT 0
         )
     ''')
     for col, ctype in [
@@ -92,6 +95,9 @@ def init_db():
         ('department', 'TEXT'),
         ('residence_permit_end_date', 'TEXT'),
         ('hire_date', 'TEXT'),
+        ('termination_date', 'TEXT'),
+        ('basic_salary', 'REAL DEFAULT 0'),
+        ('total_salary', 'REAL DEFAULT 0'),
     ]:
         _ensure_column_exists(db, 'users', col, ctype)
 
@@ -167,6 +173,101 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
+
+    # Leave Requests table
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS leave_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            leave_type TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            duration_days INTEGER NOT NULL DEFAULT 1,
+            reason TEXT,
+            status TEXT NOT NULL DEFAULT 'pending_managers',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            rejection_reason TEXT,
+            FOREIGN KEY(employee_id) REFERENCES users(id)
+        )
+    ''')
+
+    # Leave Request Approvals (Chain & Duration Tracking)
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS leave_request_approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            leave_request_id INTEGER NOT NULL,
+            approver_id INTEGER,
+            approver_role TEXT NOT NULL,
+            approval_order INTEGER DEFAULT 1,
+            status TEXT NOT NULL DEFAULT 'waiting',
+            assigned_at TEXT NOT NULL,
+            action_at TEXT,
+            response_time_seconds INTEGER DEFAULT 0,
+            comments TEXT,
+            FOREIGN KEY(leave_request_id) REFERENCES leave_requests(id) ON DELETE CASCADE,
+            FOREIGN KEY(approver_id) REFERENCES users(id)
+        )
+    ''')
+
+    # End of Service HR Adjustments & UAE Leave Types
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS eos_settlement_adjustments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL UNIQUE,
+            sick_leave_days REAL DEFAULT 0,
+            parental_leave_days REAL DEFAULT 0,
+            bereavement_leave_days REAL DEFAULT 0,
+            study_leave_days REAL DEFAULT 0,
+            hajj_leave_days REAL DEFAULT 0,
+            other_leave_days REAL DEFAULT 0,
+            additional_additions REAL DEFAULT 0,
+            additional_deductions REAL DEFAULT 0,
+            gratuity_days_deduction REAL DEFAULT 0,
+            gratuity_days_deduction_reason TEXT,
+            notes TEXT,
+            updated_at TEXT,
+            FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+    try:
+        db.execute('ALTER TABLE eos_settlement_adjustments ADD COLUMN gratuity_days_deduction REAL DEFAULT 0')
+    except Exception:
+        pass
+    try:
+        db.execute('ALTER TABLE eos_settlement_adjustments ADD COLUMN gratuity_days_deduction_reason TEXT')
+    except Exception:
+        pass
+    db.commit()
+
+    # Itemized Financial Adjustments with Reasons (Additions & Deductions)
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS eos_financial_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            item_type TEXT NOT NULL,
+            amount REAL NOT NULL,
+            reason TEXT NOT NULL,
+            created_by TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # Itemized Gratuity Day Adjustments with Reasons (Additions & Deductions)
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS eos_gratuity_day_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            item_type TEXT NOT NULL,
+            days_count REAL NOT NULL,
+            reason TEXT NOT NULL,
+            created_by TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+    db.commit()
     db.commit()
 
 

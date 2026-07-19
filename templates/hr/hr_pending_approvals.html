@@ -45,7 +45,11 @@
           </td>
           <td style='font-family:monospace;'>{{ task|format_duration }}</td>
           <td>
-            <span class='badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1'>{{ task.approver_name }}</span>
+            {% if task.approver_id %}
+              <a href="{{ url_for('hr_employee_detail', user_id=task.approver_id) }}" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 text-decoration-none">{{ task.approver_name }}</a>
+            {% else %}
+              <span class='badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1'>{{ task.approver_name }}</span>
+            {% endif %}
           </td>
           <td class='pe-4'>
             <span class='text-danger fw-bold' style='font-size:0.9rem;'>{{ task.pending_since }}</span>
