@@ -920,27 +920,27 @@
   <div class='card-body p-0'>
     {% if gratuity_info.yearly_leave_ledger %}
       <div class='table-responsive'>
-        <table class='table table-hover table-striped align-middle mb-0 text-center' style='font-size: 0.9rem;'>
+        <table class='table table-sm table-hover table-striped align-middle mb-0 text-center' style='font-size: 0.78rem;'>
           <thead class='table-dark' style='background: #1e1b4b;'>
-            <tr>
-              <th>#</th>
-              <th>{{ 'سنة الخدمة' if current_lang == 'ar' else 'Service Year' }}</th>
-              <th>{{ 'فترة السنة' if current_lang == 'ar' else 'Period' }}</th>
-              <th>{{ 'أيام الخدمة الفعلية' if current_lang == 'ar' else 'Active Service Days' }}</th>
-              <th>{{ 'الاستحقاق السنوي' if current_lang == 'ar' else 'Accrued Days' }}</th>
-              <th>{{ 'المُرَحّل من السنة السابقة' if current_lang == 'ar' else 'Carried In' }}</th>
-              <th>{{ 'إجمالي المتاح' if current_lang == 'ar' else 'Total Available' }}</th>
-              <th>{{ 'المستهلك في هذه السنة' if current_lang == 'ar' else 'Used in Year' }}</th>
-              <th>{{ 'المتبقي بنهاية السنة' if current_lang == 'ar' else 'Unused Year-End' }}</th>
-              <th>{{ 'المُرَحَّل للسنة التالية (أقصاه 15)' if current_lang == 'ar' else 'Carried Out (Max 15)' }}</th>
+            <tr style="font-size: 0.75rem;">
+              <th class="py-1">#</th>
+              <th class="py-1">{{ 'سنة الخدمة' if current_lang == 'ar' else 'Service Year' }}</th>
+              <th class="py-1">{{ 'الفترة' if current_lang == 'ar' else 'Period' }}</th>
+              <th class="py-1">{{ 'الخدمة الفعلية' if current_lang == 'ar' else 'Active Days' }}</th>
+              <th class="py-1">{{ 'المكتسب' if current_lang == 'ar' else 'Accrued' }}</th>
+              <th class="py-1">{{ 'مُرَحّل سابق' if current_lang == 'ar' else 'Carried In' }}</th>
+              <th class="py-1">{{ 'المتاح' if current_lang == 'ar' else 'Total Avail.' }}</th>
+              <th class="py-1">{{ 'المستهلك' if current_lang == 'ar' else 'Used' }}</th>
+              <th class="py-1">{{ 'رصيد النهاية' if current_lang == 'ar' else 'Year-End' }}</th>
+              <th class="py-1">{{ 'المُرَحَّل (أقصاه 15)' if current_lang == 'ar' else 'Carried Out (Max 15)' }}</th>
             </tr>
           </thead>
           <tbody>
             {% for row in gratuity_info.yearly_leave_ledger %}
               <tr class="{% if row.is_current_year %}table-warning fw-bold{% endif %}">
-                <td>{{ loop.index }}</td>
-                <td>
-                  <span class="badge {% if row.is_current_year %}bg-warning text-dark{% else %}bg-indigo-subtle text-indigo{% endif %} px-2.5 py-1" style="{% if not row.is_current_year %}background: #e0e7ff; color: #4338ca;{% endif %}">
+                <td class="py-1">{{ loop.index }}</td>
+                <td class="py-1">
+                  <span class="badge {% if row.is_current_year %}bg-warning text-dark{% else %}bg-indigo-subtle text-indigo{% endif %} px-2 py-0.5" style="{% if not row.is_current_year %}background: #e0e7ff; color: #4338ca; font-size: 0.7rem;{% endif %}">
                     {% if current_lang == 'ar' %}
                       {{ row.label }}
                     {% else %}
@@ -948,32 +948,32 @@
                     {% endif %}
                   </span>
                 </td>
-                <td><small class="text-muted">📅 {{ row.start_date }} ➔ {{ row.end_date }}</small></td>
-                <td>
-                  <span class="fw-semibold text-dark">{{ row.active_days }} / {{ row.segment_days }} {{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
+                <td class="py-1"><span class="text-muted" style="font-size: 0.72rem;">📅 {{ row.start_date }} ➔ {{ row.end_date }}</span></td>
+                <td class="py-1">
+                  <span class="fw-semibold text-dark" style="font-size: 0.75rem;">{{ row.active_days }}/{{ row.segment_days }}d</span>
                   {% if row.unpaid_leave_days > 0 %}
-                    <br><small class="text-danger">({{ 'خصم' if current_lang == 'ar' else 'deducted' }} {{ row.unpaid_leave_days }} {{ 'بدون أجر' if current_lang == 'ar' else 'unpaid' }})</small>
+                    <span class="text-danger ms-1" style="font-size: 0.68rem;">(-{{ row.unpaid_leave_days }} {{ 'بدون أجر' if current_lang == 'ar' else 'unpaid' }})</span>
                   {% endif %}
                 </td>
-                <td><strong class="text-primary">+{{ row.accrued_days }}</strong></td>
-                <td><strong class="text-secondary">+{{ row.carried_in_days }}</strong></td>
-                <td><strong class="text-dark fs-6">{{ row.total_available_days }}</strong></td>
-                <td>
+                <td class="py-1"><strong class="text-primary">+{{ row.accrued_days }}</strong></td>
+                <td class="py-1"><strong class="text-secondary">+{{ row.carried_in_days }}</strong></td>
+                <td class="py-1"><strong class="text-dark">{{ row.total_available_days }}</strong></td>
+                <td class="py-1">
                   {% if row.used_days > 0 %}
-                    <span class="badge bg-danger px-2.5 py-1">-{{ row.used_days }}</span>
+                    <span class="badge bg-danger px-1.5 py-0.5" style="font-size: 0.7rem;">-{{ row.used_days }}</span>
                   {% else %}
                     <span class="text-muted">0.0</span>
                   {% endif %}
                 </td>
-                <td><strong class="text-info">{{ row.unused_year_end_days }}</strong></td>
-                <td>
+                <td class="py-1"><strong class="text-info">{{ row.unused_year_end_days }}</strong></td>
+                <td class="py-1">
                   {% if row.is_current_year %}
-                    <span class="badge bg-success fs-6 px-3 py-1.5" title="{{ 'الرصيد المستحق النهائي' if current_lang == 'ar' else 'Final Entitled Balance' }}">
-                      💎 {{ row.carried_out_days }} {{ 'أيام مستحقة' if current_lang == 'ar' else 'days due' }}
+                    <span class="badge bg-success px-2 py-0.5" style="font-size: 0.72rem;" title="{{ 'الرصيد المستحق النهائي' if current_lang == 'ar' else 'Final Entitled Balance' }}">
+                      💎 {{ row.carried_out_days }} {{ 'مستحق' if current_lang == 'ar' else 'due' }}
                     </span>
                   {% else %}
-                    <span class="badge bg-secondary px-2.5 py-1">
-                      ➡️ {{ row.carried_out_days }} {{ 'يوم مُرَحّل' if current_lang == 'ar' else 'carried' }}
+                    <span class="badge bg-secondary px-2 py-0.5" style="font-size: 0.7rem;">
+                      ➡️ {{ row.carried_out_days }} {{ 'مُرَحّل' if current_lang == 'ar' else 'carried' }}
                     </span>
                   {% endif %}
                 </td>
