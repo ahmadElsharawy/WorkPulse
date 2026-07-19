@@ -989,3 +989,26 @@ code {
   transform: scale(1.002) translateY(-1px);
   box-shadow: 0 4px 12px rgba(79,70,229,0.08) !important;
 }
+
+/* ==========================================================
+   RTL / LTR DIRECTION & TEXT ALIGNMENT UTILITIES
+   ========================================================== */
+html[dir="rtl"] {
+  text-align: right;
+}
+html[dir="ltr"] {
+  text-align: left;
+}
+html[dir="rtl"] .text-start {
+  text-align: right !important;
+}
+html[dir="ltr"] .text-start {
+  text-align: left !important;
+}
+html[dir="rtl"] .text-end {
+  text-align: left !important;
+}
+html[dir="ltr"] .text-end {
+  text-align: right !important;
+}
+
