@@ -457,7 +457,7 @@
         </span>
         <h1 class='display-5 fw-extrabold text-indigo mb-0' style='color: #4338ca; font-weight: 800;'>
           <span id="top-net-total">{{ "%.2f"|format(gratuity_info.net_settlement_amount) }}</span>
-          <span class='fs-5 fw-normal text-muted'>AED / EGP</span>
+          <span class='fs-5 fw-normal text-muted'>AED</span>
         </h1>
         <div class='text-muted small mt-2'>
           ⏱️ {{ 'إجمالي مدة الخدمة المحسوبة:' if current_lang == 'ar' else 'Calculated Tenure:' }} <strong>{{ gratuity_info.tenure_text if current_lang == 'ar' else gratuity_info.tenure_text_en }}</strong>
