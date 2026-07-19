@@ -119,27 +119,20 @@
       border: 0.5px solid #94a3b8 !important;
     }
 
-    /* Print 2-column flow for Leave History table to make left & right columns equal height */
-    .leaves-history-table thead {
-      display: none !important;
-    }
-
-    .leaves-history-table tbody {
+    /* Ultra-Reliable 2-Column Grid Flow for Leave History in Print */
+    .print-leaves-grid {
       display: grid !important;
       grid-template-columns: 1fr 1fr !important;
       gap: 2px 4px !important;
     }
 
-    .leaves-history-table tbody tr {
-      display: flex !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-      border: 1px dashed #cbd5e1 !important;
+    .print-leave-card {
+      border: 1px solid #cbd5e1 !important;
       border-radius: 3px !important;
-      padding: 1.5px 3px !important;
-      margin-bottom: 0 !important;
-      font-size: 7.5px !important;
-      background: #fafafa !important;
+      padding: 1.5px 4px !important;
+      background: #f8fafc !important;
+      font-size: 7.2px !important;
+      box-sizing: border-box !important;
     }
 
     .signature-footer {
@@ -1066,8 +1059,9 @@
 
   <div class='card-body p-0'>
     {% if gratuity_info.leaves_history %}
-      <div class='table-responsive'>
-        <table class='table table-hover align-middle mb-0 leaves-history-table'>
+      <!-- Full Interactive Table for Screen View -->
+      <div class='table-responsive screen-only'>
+        <table class='table table-hover align-middle mb-0'>
           <thead class='table-light'>
             <tr>
               <th>#</th>
@@ -1108,6 +1102,22 @@
             {% endfor %}
           </tbody>
         </table>
+      </div>
+
+      <!-- Ultra-Compact 2-Column Grid View for Print -->
+      <div class='print-leaves-grid print-only p-1.5'>
+        {% for l in gratuity_info.leaves_history %}
+          <div class='print-leave-card'>
+            <div class='d-flex justify-content-between align-items-center fw-bold'>
+              <span>#{{ loop.index }} {{ l.leave_type }}</span>
+              <span class='badge bg-primary text-white ms-1'>{{ l.duration_days }} {{ 'يوم' if current_lang == 'ar' else 'd' }}</span>
+            </div>
+            <div class='text-dark' style='font-size: 0.68rem;'>📅 {{ l.start_date }} ➔ {{ l.end_date }}</div>
+            {% if l.reason %}
+              <div class='text-muted' style='font-size: 0.64rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;'>📝 {{ l.reason }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
       </div>
     {% else %}
       <div class="p-4 text-center text-muted">
