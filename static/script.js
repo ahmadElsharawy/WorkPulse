@@ -209,8 +209,7 @@
     requestAnimationFrame(step);
   }
 
-  function addRipple(e) {
-    const btn = e.currentTarget;
+  function addRipple(btn, e) {
     const old = btn.querySelector('.wp-ripple');
     if (old) old.remove();
     const d = Math.max(btn.clientWidth, btn.clientHeight);
@@ -247,8 +246,11 @@
       if (!isNaN(target)) animateCount(el, target, 1000);
     });
 
-    // 5. Ripple Effect on Buttons
-    document.querySelectorAll('.btn').forEach(b => b.addEventListener('click', addRipple));
+    // 5. Ripple Effect on Buttons via Event Delegation
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn');
+      if (btn) addRipple(btn, e);
+    });
 
     // 6. Typewriter Effect on Page Titles
     const title = document.querySelector('h1.page-title');
@@ -273,3 +275,4 @@
     }
   });
 })();
+

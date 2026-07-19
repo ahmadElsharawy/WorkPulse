@@ -57,8 +57,17 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
+def _ensure_column_exists(db, table, column, col_type):
+    """Safely ensure column exists in sqlite table without erroring if present."""
+    cursor = db.execute(f"PRAGMA table_info({table})")
+    columns = [row[1] for row in cursor.fetchall()]
+    if column not in columns:
+        db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+
 def init_db():
+    """Initialize database tables and schema migrations."""
     db = get_db()
+
     # Users table
     db.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -76,30 +85,16 @@ def init_db():
             hire_date TEXT
         )
     ''')
-    try:
-        db.execute('ALTER TABLE users ADD COLUMN email TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        db.execute('ALTER TABLE users ADD COLUMN phone TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        db.execute('ALTER TABLE users ADD COLUMN employee_number TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        db.execute('ALTER TABLE users ADD COLUMN department TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        db.execute('ALTER TABLE users ADD COLUMN residence_permit_end_date TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        db.execute('ALTER TABLE users ADD COLUMN hire_date TEXT')
-    except sqlite3.OperationalError:
-        pass
+    for col, ctype in [
+        ('email', 'TEXT'),
+        ('phone', 'TEXT'),
+        ('employee_number', 'TEXT'),
+        ('department', 'TEXT'),
+        ('residence_permit_end_date', 'TEXT'),
+        ('hire_date', 'TEXT'),
+    ]:
+        _ensure_column_exists(db, 'users', col, ctype)
+
     # Join table for employee-manager
     db.execute('''
         CREATE TABLE IF NOT EXISTS employee_managers (
@@ -110,22 +105,6 @@ def init_db():
             PRIMARY KEY (employee_id, manager_id)
         )
     ''')
-    # Join table for employee-project
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS employee_projects (
-            employee_id INTEGER NOT NULL,
-            project_id INTEGER NOT NULL,
-            allocated_hours INTEGER DEFAULT 0,
-            FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
-            PRIMARY KEY (employee_id, project_id)
-        )
-    ''')
-    try:
-        db.execute('ALTER TABLE employee_projects ADD COLUMN allocated_hours INTEGER DEFAULT 0')
-        db.commit()
-    except sqlite3.OperationalError:
-        pass
 
     # Projects table
     db.execute('''
@@ -137,6 +116,19 @@ def init_db():
             end_date TEXT
         )
     ''')
+
+    # Join table for employee-project
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS employee_projects (
+            employee_id INTEGER NOT NULL,
+            project_id INTEGER NOT NULL,
+            allocated_hours INTEGER DEFAULT 0,
+            FOREIGN KEY(employee_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+            PRIMARY KEY (employee_id, project_id)
+        )
+    ''')
+    _ensure_column_exists(db, 'employee_projects', 'allocated_hours', 'INTEGER DEFAULT 0')
 
     # Tasks table
     db.execute('''
@@ -151,24 +143,20 @@ def init_db():
             running_duration INTEGER DEFAULT 0,
             last_started_at TEXT,
             creator_id INTEGER NOT NULL,
+            approval_status TEXT DEFAULT "Draft",
+            approval_comments TEXT,
+            approver_id INTEGER,
             FOREIGN KEY(employee_id) REFERENCES users(id),
             FOREIGN KEY(creator_id) REFERENCES users(id),
             FOREIGN KEY(project_id) REFERENCES projects(id)
         )
     ''')
-
-    try:
-        db.execute('ALTER TABLE tasks ADD COLUMN approval_status TEXT DEFAULT "Draft"')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        db.execute('ALTER TABLE tasks ADD COLUMN approval_comments TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        db.execute('ALTER TABLE tasks ADD COLUMN approver_id INTEGER')
-    except sqlite3.OperationalError:
-        pass
+    for col, ctype in [
+        ('approval_status', 'TEXT DEFAULT "Draft"'),
+        ('approval_comments', 'TEXT'),
+        ('approver_id', 'INTEGER'),
+    ]:
+        _ensure_column_exists(db, 'tasks', col, ctype)
 
     # User preferences
     db.execute('''
@@ -180,6 +168,7 @@ def init_db():
         )
     ''')
     db.commit()
+
 
 def seed_data():
     db = get_db()
@@ -341,3 +330,19 @@ def set_manager_ids(employee_id, manager_ids):
     for mid in manager_ids:
         db.execute('INSERT INTO employee_managers (employee_id, manager_id) VALUES (?,?)', (employee_id, mid))
     db.commit()
+
+
+def get_pending_approvals_count(user):
+    """Return count of submitted tasks pending approval for the given user."""
+    if not user or not user.is_authenticated:
+        return 0
+    try:
+        db = get_db()
+        if user.is_hr:
+            row = db.execute("SELECT COUNT(*) FROM tasks WHERE approval_status = 'Submitted'").fetchone()
+        else:
+            row = db.execute("SELECT COUNT(*) FROM tasks WHERE approver_id = ? AND approval_status = 'Submitted'", (user.id,)).fetchone()
+        return row[0] if row else 0
+    except Exception:
+        return 0
+
