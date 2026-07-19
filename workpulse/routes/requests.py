@@ -1,37 +1,38 @@
 import sqlite3
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session
 from flask_login import login_required, current_user
 from workpulse.database import get_db
 
 bp = Blueprint('requests', __name__, url_prefix='/requests')
 
 
-def format_duration_arabic(seconds):
+def format_duration_arabic(seconds, lang='ar'):
     """Format duration in seconds into a friendly human readable string (Arabic/English)."""
     if seconds is None or seconds < 0:
-        return 'غير محدد'
+        return 'غير محدد' if lang == 'ar' else 'N/A'
     
     seconds = int(seconds)
     if seconds < 60:
-        return 'أقل من دقيقة'
+        return 'أقل من دقيقة' if lang == 'ar' else '< 1 min'
     
     minutes = seconds // 60
     if minutes < 60:
-        return f'{minutes} دقيقة'
+        return f'{minutes} دقيقة' if lang == 'ar' else f'{minutes} mins'
     
     hours = minutes // 60
     rem_minutes = minutes % 60
     if hours < 24:
         if rem_minutes > 0:
-            return f'{hours} ساعة و {rem_minutes} دقيقة'
-        return f'{hours} ساعة'
+            return f'{hours} ساعة و {rem_minutes} دقيقة' if lang == 'ar' else f'{hours} hrs {rem_minutes} mins'
+        return f'{hours} ساعة' if lang == 'ar' else f'{hours} hrs'
     
     days = hours // 24
     rem_hours = hours % 24
     if rem_hours > 0:
-        return f'{days} يوم و {rem_hours} ساعة'
-    return f'{days} يوم'
+        return f'{days} يوم و {rem_hours} ساعة' if lang == 'ar' else f'{days} days {rem_hours} hrs'
+    return f'{days} يوم' if lang == 'ar' else f'{days} days'
 
 
 def calculate_elapsed_time(assigned_at_str):
@@ -54,7 +55,7 @@ def calculate_elapsed_time(assigned_at_str):
 @login_required
 def leaves_list():
     db = get_db()
-    current_lang = g.get('current_lang', 'ar')
+    current_lang = session.get('lang', 'ar')
     
     # 1. Fetch Leave Requests based on user role
     if current_user.role == 'HR':
@@ -105,17 +106,18 @@ def leaves_list():
         
         for step in steps:
             s_dict = dict(step)
+            is_ar = current_lang == 'ar'
             
             # Format time duration
             if s_dict['status'] == 'approved':
                 resp_sec = s_dict.get('response_time_seconds') or 0
-                s_dict['duration_text'] = f"تمت الموافقة خلال {format_duration_arabic(resp_sec)}"
+                s_dict['duration_text'] = f"تمت الموافقة خلال {format_duration_arabic(resp_sec, current_lang)}" if is_ar else f"Approved in {format_duration_arabic(resp_sec, current_lang)}"
             elif s_dict['status'] == 'rejected':
                 resp_sec = s_dict.get('response_time_seconds') or 0
-                s_dict['duration_text'] = f"تم الرفض خلال {format_duration_arabic(resp_sec)}"
+                s_dict['duration_text'] = f"تم الرفض خلال {format_duration_arabic(resp_sec, current_lang)}" if is_ar else f"Rejected in {format_duration_arabic(resp_sec, current_lang)}"
             elif s_dict['status'] == 'pending':
                 elapsed_sec = calculate_elapsed_time(s_dict.get('assigned_at'))
-                s_dict['duration_text'] = f"معلق منذ {format_duration_arabic(elapsed_sec)}"
+                s_dict['duration_text'] = f"معلق منذ {format_duration_arabic(elapsed_sec, current_lang)}" if is_ar else f"Pending for {format_duration_arabic(elapsed_sec, current_lang)}"
                 
                 # Check if current logged-in user is authorized to approve this step
                 if s_dict['approver_role'] == 'Manager' and s_dict['approver_id'] == current_user.id:
@@ -125,7 +127,7 @@ def leaves_list():
                     can_current_user_approve = True
                     current_pending_step_id = s_dict['id']
             else:
-                s_dict['duration_text'] = 'بانتظار دور الموافقة'
+                s_dict['duration_text'] = 'بانتظار دور الموافقة' if is_ar else 'Awaiting sequence'
                 
             processed_steps.append(s_dict)
             

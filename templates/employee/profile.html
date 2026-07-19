@@ -111,7 +111,7 @@
               <strong class='text-indigo fs-7 fw-bold' style='color: #4f46e5;'>{{ "%.2f"|format(gratuity_info.gratuity_amount) }}</strong>
             </div>
             <div class='text-muted' style='font-size: 0.72rem;'>
-              ⏱️ {{ 'مدة الخدمة:' if current_lang == 'ar' else 'Tenure:' }} <strong>{{ gratuity_info.tenure_text }}</strong>
+              ⏱️ {{ 'مدة الخدمة:' if current_lang == 'ar' else 'Tenure:' }} <strong>{{ gratuity_info.tenure_text if current_lang == 'ar' else gratuity_info.tenure_text_en }}</strong>
             </div>
           </div>
 

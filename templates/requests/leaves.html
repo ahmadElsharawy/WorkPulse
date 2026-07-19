@@ -110,7 +110,7 @@
               <div class="p-3 bg-white rounded-3 border">
                 <span class="text-muted d-block mb-1 fs-7">📆 {{ 'فترة الإجازة' if current_lang == 'ar' else 'Leave Period' }}</span>
                 <strong class="text-dark">{{ req.start_date }}</strong>
-                <span class="text-muted mx-1">إلى</span>
+                <span class="text-muted mx-1">{{ 'إلى' if current_lang == 'ar' else 'to' }}</span>
                 <strong class="text-dark">{{ req.end_date }}</strong>
               </div>
             </div>
@@ -148,7 +148,7 @@
                     <div class="card-body p-3">
                       <div class="d-flex align-items-center justify-content-between mb-2">
                         <span class="badge px-2 py-1" style="font-size: 0.72rem; {% if step.approver_role == 'HR' %}background:#e0e7ff; color:#3730a3;{% else %}background:#f3e8ff; color:#6b21a8;{% endif %}">
-                          {{ 'خطوة ' ~ loop.index ~ ': ' ~ ('إدارة HR' if step.approver_role == 'HR' else 'المدير المباشر') }}
+                          {{ ('خطوة ' if current_lang == 'ar' else 'Step ') ~ loop.index ~ ': ' ~ (('إدارة HR' if current_lang == 'ar' else 'HR Manager') if step.approver_role == 'HR' else ('المدير المباشر' if current_lang == 'ar' else 'Direct Manager')) }}
                         </span>
                         
                         {% if step.status == 'approved' %}
@@ -166,7 +166,7 @@
                         {% if step.approver_name %}
                           {{ step.approver_name }}
                         {% else %}
-                          {{ 'قسم HR' if step.approver_role == 'HR' else 'مدير معني' }}
+                          {{ ('قسم HR' if current_lang == 'ar' else 'HR Department') if step.approver_role == 'HR' else ('مدير معني' if current_lang == 'ar' else 'Assigned Manager') }}
                         {% endif %}
                       </h6>
 
@@ -252,10 +252,10 @@
             <div class="col-md-6">
               <label class="form-label fw-semibold" style="color: #1e293b !important;">{{ 'نوع الإجازة' if current_lang == 'ar' else 'Leave Type' }}</label>
               <select name="leave_type" class="form-select py-2" style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" required>
-                <option value="إجازة سنوية">إجازة سنوية (Annual Leave)</option>
-                <option value="إجازة مرضية">إجازة مرضية (Sick Leave)</option>
-                <option value="إجازة عارضة">إجازة عارضة (Casual Leave)</option>
-                <option value="إجازة بدون راتب">إجازة بدون راتب (Unpaid Leave)</option>
+                <option value="إجازة سنوية">{{ 'إجازة سنوية (Annual Leave)' if current_lang == 'ar' else 'Annual Leave' }}</option>
+                <option value="إجازة مرضية">{{ 'إجازة مرضية (Sick Leave)' if current_lang == 'ar' else 'Sick Leave' }}</option>
+                <option value="إجازة عارضة">{{ 'إجازة عارضة (Casual Leave)' if current_lang == 'ar' else 'Casual Leave' }}</option>
+                <option value="إجازة بدون راتب">{{ 'إجازة بدون راتب (Unpaid Leave)' if current_lang == 'ar' else 'Unpaid Leave' }}</option>
               </select>
             </div>
 

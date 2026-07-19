@@ -447,7 +447,7 @@
           <span class='fs-5 fw-normal text-muted'>AED / EGP</span>
         </h1>
         <div class='text-muted small mt-2'>
-          ⏱️ {{ 'إجمالي مدة الخدمة المحسوبة:' if current_lang == 'ar' else 'Calculated Tenure:' }} <strong>{{ gratuity_info.tenure_text }}</strong>
+          ⏱️ {{ 'إجمالي مدة الخدمة المحسوبة:' if current_lang == 'ar' else 'Calculated Tenure:' }} <strong>{{ gratuity_info.tenure_text if current_lang == 'ar' else gratuity_info.tenure_text_en }}</strong>
         </div>
       </div>
 
@@ -528,9 +528,9 @@
               </th>
               <td class="text-center">
                 {% if gratuity_info.tenure_years < 1.0 %}
-                  <span class="text-muted">0.0 يوم</span>
+                  <span class="text-muted">0.0 {{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
                 {% else %}
-                  <strong class="text-primary">{{ gratuity_info.gratuity_tier1_days }}</strong> <span class="small text-muted">يوم</span>
+                  <strong class="text-primary">{{ gratuity_info.gratuity_tier1_days }}</strong> <span class="small text-muted">{{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
                 {% endif %}
               </td>
               <td class="text-center">
@@ -548,9 +548,9 @@
               </th>
               <td class="text-center">
                 {% if gratuity_info.tenure_years > 5.0 %}
-                  <strong class="text-primary">{{ gratuity_info.gratuity_tier2_days }}</strong> <span class="small text-muted">يوم</span>
+                  <strong class="text-primary">{{ gratuity_info.gratuity_tier2_days }}</strong> <span class="small text-muted">{{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
                 {% else %}
-                  <span class="text-muted">0.0 يوم</span>
+                  <span class="text-muted">0.0 {{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
                 {% endif %}
               </td>
               <td class="text-center">
@@ -573,7 +573,7 @@
                   <div class="small fw-normal text-muted">📝 {{ item.reason }}</div>
                 </th>
                 <td class="text-center {{ 'text-danger' if item.item_type == 'deduction' else 'text-success' }} fw-bold">
-                  {{ '-' if item.item_type == 'deduction' else '+' }}{{ item.days_count }} <span class="fs-7">يوم</span>
+                  {{ '-' if item.item_type == 'deduction' else '+' }}{{ item.days_count }} <span class="fs-7">{{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
                 </td>
                 <td class="text-center {{ 'text-danger' if item.item_type == 'deduction' else 'text-success' }} fw-bold">
                   {{ '-' if item.item_type == 'deduction' else '+' }}{{ "%.2f"|format(item.days_count * gratuity_info.daily_basic) }} <span class="fs-7">AED</span>
@@ -587,7 +587,7 @@
                   🛑 {{ 'أيام إجازة بدون أجر (مستبعدة من الخدمة):' if current_lang == 'ar' else 'Unpaid Leave Days (excluded from service):' }}
                 </th>
                 <td class="text-center text-dark fw-bold" colspan="2">
-                  {{ gratuity_info.unpaid_leave_days }} <span class="fs-7">يوم مستبعد</span>
+                  {{ gratuity_info.unpaid_leave_days }} <span class="fs-7">{{ 'يوم مستبعد' if current_lang == 'ar' else 'days excluded' }}</span>
                 </td>
               </tr>
             {% endif %}
@@ -595,7 +595,7 @@
             <tr class='table-primary align-middle'>
               <th class='fw-bold'>{{ 'صافي إجمالي المكافأة المطبقة:' if current_lang == 'ar' else 'Net Total Gratuity Payable:' }}</th>
               <td class='fw-bold text-center text-indigo fs-6' style="background: #e0e7ff; color: #4338ca;">
-                {{ gratuity_info.gratuity_net_days }} <span class="fs-7">يوم</span>
+                {{ gratuity_info.gratuity_net_days }} <span class="fs-7">{{ 'يوم' if current_lang == 'ar' else 'days' }}</span>
               </td>
               <td class='fw-bold text-center text-indigo fs-6' style="background: #e0e7ff; color: #4338ca;">
                 {{ "%.2f"|format(gratuity_info.gratuity_amount) }} <span class="fs-7">AED</span>
@@ -770,10 +770,15 @@
               topWageLabel.className = 'badge ' + (basis === 'basic' ? 'bg-success' : 'bg-primary') + ' ms-1';
             }
 
-            breakdownEl.innerHTML = '📊 المكافأة: ' + gratuityAmount.toFixed(2) +
-              ' + بدل الإجازات: ' + leaveVal.toFixed(2) +
-              (additions > 0 ? ' + إضافات: ' + additions.toFixed(2) : '') +
-              (deductions > 0 ? ' - خصومات: ' + deductions.toFixed(2) : '') +
+            var txtGrat = isAr ? '📊 المكافأة: ' : '📊 Gratuity: ';
+            var txtLeaves = isAr ? ' + بدل الإجازات: ' : ' + Leaves: ';
+            var txtAdd = isAr ? ' + إضافات: ' : ' + Additions: ';
+            var txtDed = isAr ? ' - خصومات: ' : ' - Deductions: ';
+
+            breakdownEl.innerHTML = txtGrat + gratuityAmount.toFixed(2) +
+              txtLeaves + leaveVal.toFixed(2) +
+              (additions > 0 ? txtAdd + additions.toFixed(2) : '') +
+              (deductions > 0 ? txtDed + deductions.toFixed(2) : '') +
               ' = <strong>' + netTotal.toFixed(2) + ' AED</strong>';
 
             resultDiv.classList.remove('d-none');
@@ -923,7 +928,11 @@
                 <td>{{ loop.index }}</td>
                 <td>
                   <span class="badge {% if row.is_current_year %}bg-warning text-dark{% else %}bg-indigo-subtle text-indigo{% endif %} px-2.5 py-1" style="{% if not row.is_current_year %}background: #e0e7ff; color: #4338ca;{% endif %}">
-                    {{ row.label }}
+                    {% if current_lang == 'ar' %}
+                      {{ row.label }}
+                    {% else %}
+                      Year {{ row.year_number }}{% if row.is_current_year %} (Current){% endif %}
+                    {% endif %}
                   </span>
                 </td>
                 <td><small class="text-muted">📅 {{ row.start_date }} ➔ {{ row.end_date }}</small></td>
@@ -946,7 +955,7 @@
                 <td><strong class="text-info">{{ row.unused_year_end_days }}</strong></td>
                 <td>
                   {% if row.is_current_year %}
-                    <span class="badge bg-success fs-6 px-3 py-1.5" title="الرصيد المستحق النهائي">
+                    <span class="badge bg-success fs-6 px-3 py-1.5" title="{{ 'الرصيد المستحق النهائي' if current_lang == 'ar' else 'Final Entitled Balance' }}">
                       💎 {{ row.carried_out_days }} {{ 'أيام مستحقة' if current_lang == 'ar' else 'days due' }}
                     </span>
                   {% else %}
@@ -993,31 +1002,31 @@
         <tbody>
           <tr>
             <td><strong>🌴 {{ 'الإجازة السنوية' if current_lang == 'ar' else 'Annual Leave' }}</strong></td>
-            <td>المادة (29)</td>
-            <td>30 يوماً/سنة (يومان/شهر للسنة الأولى)</td>
+            <td>{{ 'المادة (29)' if current_lang == 'ar' else 'Article (29)' }}</td>
+            <td>{{ '30 يوماً/سنة (يومان/شهر للسنة الأولى)' if current_lang == 'ar' else '30 days/yr (2 days/month for 1st yr)' }}</td>
             <td><strong class="text-success">{{ "%.1f"|format(gratuity_info.remaining_leave_days) }} {{ 'أيام متبقية' if current_lang == 'ar' else 'days left' }}</strong></td>
-            <td><span class="badge bg-success-subtle text-success">أجر كامل (مسيّلة مالياً)</span></td>
+            <td><span class="badge bg-success-subtle text-success">{{ 'أجر كامل (مسيّلة مالياً)' if current_lang == 'ar' else 'Full Wage (Encashable)' }}</span></td>
           </tr>
           <tr>
             <td><strong>🤒 {{ 'الإجازة المرضية' if current_lang == 'ar' else 'Sick Leave' }}</strong></td>
-            <td>المادة (31)</td>
-            <td>90 يوماً/سنة (15 كامل + 30 نصف + 45 بدون)</td>
+            <td>{{ 'المادة (31)' if current_lang == 'ar' else 'Article (31)' }}</td>
+            <td>{{ '90 يوماً/سنة (15 كامل + 30 نصف + 45 بدون)' if current_lang == 'ar' else '90 days/yr (15 full + 30 half + 45 unpaid)' }}</td>
             <td><strong>{{ gratuity_info.sick_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
-            <td><span class="badge bg-info-subtle text-info">تدرّج الأجر القانوني</span></td>
+            <td><span class="badge bg-info-subtle text-info">{{ 'تدرّج الأجر القانوني' if current_lang == 'ar' else 'Tiered Wage Rate' }}</span></td>
           </tr>
           <tr>
-            <td><strong>🍼 {{ 'إجازة الوالدية / الأبوة والوضع' if current_lang == 'ar' else 'Parental / Maternity' }}</strong></td>
-            <td>المادة (32)</td>
-            <td>5 أيام والدية / 60 يوماً للوضع</td>
+            <td><strong>🍼 {{ 'إجازة الوالدية / الأبوة والوضع' if current_lang == 'ar' else 'Parental / Maternity Leave' }}</strong></td>
+            <td>{{ 'المادة (32)' if current_lang == 'ar' else 'Article (32)' }}</td>
+            <td>{{ '5 أيام والدية / 60 يوماً للوضع' if current_lang == 'ar' else '5 parental days / 60 maternity days' }}</td>
             <td><strong>{{ gratuity_info.parental_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
-            <td><span class="badge bg-primary-subtle text-primary">أجر كامل</span></td>
+            <td><span class="badge bg-primary-subtle text-primary">{{ 'أجر كامل' if current_lang == 'ar' else 'Full Wage' }}</span></td>
           </tr>
           <tr>
             <td><strong>🕯️ {{ 'إجازة الحداد / الوفاة' if current_lang == 'ar' else 'Bereavement Leave' }}</strong></td>
-            <td>المادة (32)</td>
-            <td>5 أيام (وفاة الزوج) / 3 أيام (الأقارب)</td>
+            <td>{{ 'المادة (32)' if current_lang == 'ar' else 'Article (32)' }}</td>
+            <td>{{ '5 أيام (وفاة الزوج) / 3 أيام (الأقارب)' if current_lang == 'ar' else '5 days (spouse death) / 3 days (relatives)' }}</td>
             <td><strong>{{ gratuity_info.bereavement_leave_days }}</strong> {{ 'أيام' if current_lang == 'ar' else 'days' }}</td>
-            <td><span class="badge bg-secondary-subtle text-secondary">أجر كامل</span></td>
+            <td><span class="badge bg-secondary-subtle text-secondary">{{ 'أجر كامل' if current_lang == 'ar' else 'Full Wage' }}</span></td>
           </tr>
         </tbody>
       </table>
@@ -1070,8 +1079,8 @@
                 <td><small class="text-muted">{{ l.reason or '-' }}</small></td>
                 {% if is_hr_view %}
                   <td class='text-center action-col'>
-                    <form action="{{ url_for('delete_eos_leave', user_id=employee.id, leave_id=l.id) }}" method="POST" onsubmit="return confirm('هل أنت تأكد من إلغاء وحذف هذه الإجازة؟');" class="d-inline">
-                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="إلغاء الإجازة">🗑️ {{ 'حذف' if current_lang == 'ar' else 'Delete' }}</button>
+                    <form action="{{ url_for('delete_eos_leave', user_id=employee.id, leave_id=l.id) }}" method="POST" onsubmit="return confirm('{{ 'هل أنت متأكد من إلغاء وحذف هذه الإجازة؟' if current_lang == 'ar' else 'Are you sure you want to delete this leave record?' }}');" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="{{ 'إلغاء الإجازة' if current_lang == 'ar' else 'Delete Leave' }}">🗑️ {{ 'حذف' if current_lang == 'ar' else 'Delete' }}</button>
                     </form>
                   </td>
                 {% endif %}

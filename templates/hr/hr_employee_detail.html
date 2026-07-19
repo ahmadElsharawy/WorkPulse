@@ -9,7 +9,7 @@
   </div>
   <div class='d-flex flex-wrap gap-2'>
     <a href='{{ url_for("hr_employee_end_of_service", user_id=employee.id) }}' class='btn btn-indigo text-white fw-semibold d-flex align-items-center gap-1.5' style='background: #4338ca; border-color: #4338ca;'>
-      🇦🇪 End of Service
+      🇦🇪 {{ 'تصفية نهاية الخدمة' if current_lang == 'ar' else 'End of Service' }}
     </a>
     <button type="button" class="btn btn-outline-primary fw-semibold d-flex align-items-center gap-1.5" onclick="document.getElementById('leaves-tab').click(); document.getElementById('employee-tabs-content').scrollIntoView({behavior: 'smooth'});">
       🌴 {{ 'سجل وإجازات الموظف' if current_lang == 'ar' else 'Leave Requests' }}
@@ -130,7 +130,7 @@
               <strong class='text-indigo fs-7 fw-bold' style='color: #4f46e5;'>{{ "%.2f"|format(gratuity_info.gratuity_amount) }}</strong>
             </div>
             <div class='text-muted' style='font-size: 0.72rem;'>
-              ⏱️ {{ 'مدة الخدمة:' if current_lang == 'ar' else 'Tenure:' }} <strong>{{ gratuity_info.tenure_text }}</strong>
+              ⏱️ {{ 'مدة الخدمة:' if current_lang == 'ar' else 'Tenure:' }} <strong>{{ gratuity_info.tenure_text if current_lang == 'ar' else gratuity_info.tenure_text_en }}</strong>
             </div>
           </div>
 

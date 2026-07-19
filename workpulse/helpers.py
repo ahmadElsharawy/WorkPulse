@@ -99,12 +99,16 @@ def calculate_uae_gratuity_and_leaves(employee, db):
 
     if years_part > 0:
         tenure_text = f"{years_part} سنة و {months_part} شهر و {days_part} يوم"
+        tenure_text_en = f"{years_part} yrs, {months_part} mos, {days_part} days"
     elif months_part > 0:
         tenure_text = f"{months_part} شهر و {days_part} يوم"
+        tenure_text_en = f"{months_part} mos, {days_part} days"
     else:
         tenure_text = f"{days_part} يوم"
+        tenure_text_en = f"{days_part} days"
     if unpaid_leave_days > 0:
         tenure_text += f" (مستبعد منها {int(unpaid_leave_days)} يوم إجازة بدون أجر)"
+        tenure_text_en += f" ({int(unpaid_leave_days)} unpaid leave days excluded)"
 
     # 1. Gratuity Calculation (UAE Article 51)
     if years_float < 1.0:
@@ -459,6 +463,7 @@ def calculate_uae_gratuity_and_leaves(employee, db):
         'tenure_years': round(years_float, 2),
         'tenure_days': total_days,
         'tenure_text': tenure_text,
+        'tenure_text_en': tenure_text_en,
         'gratuity_amount': round(gratuity_amount, 2),
         'gratuity_tier1_days': round(gratuity_tier1_days, 1),
         'gratuity_tier1_amount': round(gratuity_tier1_amount, 2),
