@@ -628,7 +628,7 @@
           <tbody>
             <tr>
               <th class='table-light' style='width: 36%;'>{{ 'قاعدة الاحتساب:' if current_lang == 'ar' else 'Accrual Rule:' }}</th>
-              <td colspan="2"><span class='badge bg-indigo-subtle text-indigo px-2.5 py-1' style='background: #e0e7ff; color: #4338ca;'>{{ gratuity_info.accrual_text }}</span></td>
+              <td colspan="2"><span class='badge bg-indigo-subtle text-indigo px-2.5 py-1' style='background: #e0e7ff; color: #4338ca;'>{{ gratuity_info.accrual_text if current_lang == 'ar' else gratuity_info.accrual_text_en }}</span></td>
             </tr>
             <tr>
               <th class='table-light'>{{ 'إجمالي الإجازات المكتسبة:' if current_lang == 'ar' else 'Accrued Leave Days:' }}</th>

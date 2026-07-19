@@ -40,6 +40,7 @@ def _default_eos_response(employee=None, daily_basic=0.0, daily_total=0.0):
         'gratuity_day_items': [],
         'yearly_leave_ledger': [],
         'accrual_text': 'غير محدد',
+        'accrual_text_en': 'Not set',
         'is_active': not bool(termination_date_str)
     }
 
@@ -501,5 +502,6 @@ def calculate_uae_gratuity_and_leaves(employee, db):
         'financial_items': financial_items,
         'yearly_leave_ledger': yearly_leave_ledger,
         'accrual_text': '15 يوماً أقصاه (مُرَحّلة من السنة السابقة) + 2.5 يوم/شهر (السنة الحالية)',
+        'accrual_text_en': 'Max 15 days (carried from prior yr) + 2.5 days/month (current yr)',
         'is_active': is_active
     }
