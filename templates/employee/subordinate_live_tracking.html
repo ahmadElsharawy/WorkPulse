@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'متابعة مهام المرؤوسين' if current_lang == 'ar' else 'Subordinate Tasks – Live Tracking' }} – WorkPulse{% endblock %}
+{% block content %}
+
+<div class='page-header mb-4'>
+  <h1 class='page-title'>🟢 {{ 'متابعة مهام المرؤوسين' if current_lang == 'ar' else 'Subordinate Tasks – Live Tracking' }}</h1>
+  <p class='page-subtitle'>{{ 'تتبع مهام المرؤوسين في الوقت الفعلي' if current_lang == 'ar' else 'Track your subordinates tasks in real-time' }}</p>
+</div>
+
+<!-- ── Filter Card ── -->
+<div class='card mb-4 shadow-sm'>
+  <div class='card-header bg-dark d-flex justify-content-between align-items-center text-white'>
+    <span>🔍 {{ 'تصفية مهام المرؤوسين' if current_lang == 'ar' else 'Filter Subordinate Tasks' }}</span>
+    <button class='btn btn-outline-light btn-sm' type='button' data-bs-toggle='collapse' data-bs-target='#subTasksFilterCollapse'>
+      {{ 'طي الفلاتر' if current_lang == 'ar' else 'Toggle Filters' }}
+    </button>
+  </div>
+  <div class='collapse show' id='subTasksFilterCollapse'>
+    <div class='card-body'>
+      <form method='GET' action='{{ url_for("employee_subordinate_live_tracking") }}'>
+        <input type="hidden" name="filter_applied" value="1">
+        <div class='row g-3'>
+          <!-- Employees -->
+          <div class='col-md-2'>
+            <label class='form-label fw-bold'>{{ _('employees') }}</label>
+            <div class='check-list'>
+              {% for emp in subordinates %}
+                <div class='form-check'>
+                  <input class='form-check-input' type='checkbox' name='sub_employees' value='{{ emp.id }}' id='sub_emp_{{ emp.id }}'
+                    {% if emp.id in selected_sub_employees %}checked{% endif %}>
+                  <label class='form-check-label text-truncate d-block' for='sub_emp_{{ emp.id }}'>{{ emp.full_name }}</label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <!-- Projects -->
+          <div class='col-md-3'>
+            <label class='form-label fw-bold'>{{ _('projects') }}</label>
+            <div class='check-list'>
+              <div class='form-check'>
+                <input class='form-check-input' type='checkbox' name='sub_projects' value='none' id='sub_proj_none'
+                  {% if 'none' in selected_sub_projects %}checked{% endif %}>
+                <label class='form-check-label text-muted fst-italic' for='sub_proj_none'>{{ 'بدون مشروع' if current_lang == 'ar' else 'No Project' }}</label>
+              </div>
+              {% for proj in projects_list %}
+                <div class='form-check'>
+                  <input class='form-check-input' type='checkbox' name='sub_projects' value='{{ proj.id }}' id='sub_proj_{{ proj.id }}'
+                    {% if proj.id in selected_sub_projects %}checked{% endif %}>
+                  <label class='form-check-label text-truncate d-block' for='sub_proj_{{ proj.id }}'>{{ proj.name }}</label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <!-- Status -->
+          <div class='col-md-2'>
+            <label class='form-label fw-bold'>{{ _('status') }}</label>
+            <div class='check-list'>
+              {% for status_key, status_val in [('Running', _('running')), ('Pause', _('pause')), ('Finish', _('finish'))] %}
+                <div class='form-check'>
+                  <input class='form-check-input' type='checkbox' name='sub_statuses' value='{{ status_key }}' id='sub_status_{{ status_key }}'
+                    {% if status_key in selected_sub_statuses %}checked{% endif %}>
+                  <label class='form-check-label' for='sub_status_{{ status_key }}'>{{ status_val }}</label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <!-- Assigned By -->
+          <div class='col-md-2'>
+            <label class='form-label fw-bold'>{{ _('assigned_to') }}</label>
+            <div class='check-list'>
+              {% for creator in sub_creators_list %}
+                <div class='form-check'>
+                  <input class='form-check-input' type='checkbox' name='sub_creators' value='{{ creator.id }}' id='sub_creator_{{ creator.id }}'
+                    {% if creator.id in selected_sub_creators %}checked{% endif %}>
+                  <label class='form-check-label text-truncate d-block' for='sub_creator_{{ creator.id }}'>
+                    {% if creator.id == current_user.id %}{{ 'أنا' if current_lang == 'ar' else 'Self' }} ({{ creator.full_name }}){% else %}{{ creator.full_name }}{% endif %}
+                  </label>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          <!-- Date -->
+          <div class='col-md-1'>
+            <label class='form-label fw-bold'>{{ _('date') }}</label>
+            <input type='date' class='form-control mb-2' name='sub_created_from' value='{{ sub_created_from }}'>
+            <input type='date' class='form-control' name='sub_created_to' value='{{ sub_created_to }}'>
+          </div>
+          <!-- Actions -->
+          <div class='col-md-2 d-flex align-items-end'>
+            <div class='d-flex flex-column gap-2 w-100'>
+              <button type='submit' class='btn btn-primary w-100'>{{ _('filter') }}</button>
+              <a href='{{ url_for("employee_subordinate_live_tracking") }}?reset=1' class='btn btn-secondary w-100'>{{ 'إعادة تعيين' if current_lang == 'ar' else 'Reset' }}</a>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tasks Table ── -->
+<div id='subordinate-live-tasks-wrapper'>
+  {% if subordinate_tasks %}
+  <div class='card shadow-sm mb-5'>
+    <div class='card-header bg-dark text-white fw-bold'>
+      📋 {{ 'مهام المرؤوسين' if current_lang == 'ar' else 'Subordinate Tasks' }}
+      <span class='badge bg-light text-dark ms-2'>{{ total_sub_tasks }}</span>
+    </div>
+    <div class='table-responsive'>
+      <table class='table mb-0 table-sortable' data-sortable>
+        <thead>
+          <tr>
+            <th>{{ _('employees') }}</th>
+            <th>{{ _('projects') }}</th>
+            <th>{{ _('task_title') }}</th>
+            <th>{{ _('status') }}</th>
+            <th>{{ _('timesheet_status') }}</th>
+            <th>{{ _('date') }}</th>
+            <th>{{ _('duration') }}</th>
+            <th>{{ _('assigned_to') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in subordinate_tasks %}
+          <tr>
+            <td><strong>{{ task.employee_name }}</strong></td>
+            <td>
+              {% if task.project_name %}
+                <span class='badge' style='background:#e0f2fe;color:#075985;font-weight:600;'>{{ task.project_name }}</span>
+              {% else %}
+                <span class='text-muted'>–</span>
+              {% endif %}
+            </td>
+            <td>
+              <strong>{{ task.title }}</strong>
+              <small class='text-muted d-block text-truncate mt-1' style='max-width:180px;'>{{ task.description or "" }}</small>
+            </td>
+            <td>
+              {% if task.status == 'Running' %}
+                <span class='badge badge-running text-white'>
+                  <span class='spinner-grow spinner-grow-sm me-1' style='width:.45rem;height:.45rem;'></span>{{ _('running') }}
+                </span>
+              {% elif task.status == 'Pause' %}
+                <span class='badge badge-pause text-dark'>{{ _('pause') }}</span>
+              {% elif task.status == 'Finish' %}
+                <span class='badge badge-finish text-white'>{{ _('finish') }}</span>
+              {% else %}
+                <span class='badge bg-secondary'>{{ task.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if task.approval_status == 'Approved' %}
+                <span class='badge bg-success-subtle text-success border border-success-subtle px-2 py-1'>✅ {{ _('approve') }}</span>
+              {% elif task.approval_status == 'Submitted' %}
+                <span class='badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1'>⏳ {{ 'مقدم' if current_lang == 'ar' else 'Submitted' }}</span>
+              {% elif task.approval_status == 'Rejected' %}
+                <span class='badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1' title='{{ task.approval_comments or "" }}'>❌ {{ _('reject') }}</span>
+              {% else %}
+                <span class='badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1'>📝 {{ 'مسودة' if current_lang == 'ar' else 'Draft' }}</span>
+              {% endif %}
+            </td>
+            <td class='text-muted' style='font-size:.82rem;white-space:nowrap;'>{{ task.created_at|datetimeformat }}</td>
+            <td>
+              <span class='duration-display' data-task-id='{{ task.id }}' data-status='{{ task.status }}'
+                    data-last-started='{{ task.last_started_at or "" }}' data-accumulated='{{ task|total_seconds }}'>{{ task|format_duration }}</span>
+            </td>
+            <td>
+              {% if task.creator_id == current_user.id %}
+                <span class='text-muted'>{{ 'أنا' if current_lang == 'ar' else 'Self' }}</span>
+              {% else %}
+                <strong>{{ task.creator_name }}</strong>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination -->
+    {% if sub_total_pages > 1 %}
+    <div class="card-footer bg-light py-2">
+      <nav class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+          {% if current_lang == 'ar' %}
+            عرض المهام من <strong>{{ sub_showing_from }}</strong> إلى <strong>{{ sub_showing_to }}</strong> من إجمالي <strong>{{ total_sub_tasks }}</strong> مهمة
+          {% else %}
+            Showing tasks <strong>{{ sub_showing_from }}</strong> to <strong>{{ sub_showing_to }}</strong> of <strong>{{ total_sub_tasks }}</strong>
+          {% endif %}
+        </div>
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item {% if sub_page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(1) }}">{{ 'الأول' if current_lang == 'ar' else 'First' }}</a>
+          </li>
+          <li class="page-item {% if sub_page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(sub_page - 1) }}">{{ 'السابق' if current_lang == 'ar' else 'Previous' }}</a>
+          </li>
+          
+          {% for p in sub_page_range %}
+            {% if p is none %}
+              <li class="page-item disabled">
+                <span class="page-link">...</span>
+              </li>
+            {% else %}
+              <li class="page-item {% if p == sub_page %}active{% endif %}">
+                <a class="page-link" href="{{ sub_page_url(p) }}">{{ p }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+          
+          <li class="page-item {% if sub_page == sub_total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(sub_page + 1) }}">{{ 'التالي' if current_lang == 'ar' else 'Next' }}</a>
+          </li>
+          <li class="page-item {% if sub_page == sub_total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ sub_page_url(sub_total_pages) }}">{{ 'الأخير' if current_lang == 'ar' else 'Last' }}</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+    <div class='card shadow-sm mb-5'>
+      <div class='card-body text-center text-muted py-4'>{{ 'لا توجد مهام للمرؤوسين تطابق هذه الفلاتر.' if current_lang == 'ar' else 'No tasks found for your subordinates.' }}</div>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function updateTimers() {
+    const now = new Date();
+    document.querySelectorAll('.duration-display').forEach(function(el) {
+      if (el.getAttribute('data-status') !== 'Running') return;
+      const lastStartedStr = el.getAttribute('data-last-started');
+      if (!lastStartedStr) return;
+      const lastStarted = new Date(lastStartedStr + 'Z');
+      const accumulated = parseInt(el.getAttribute('data-accumulated') || '0', 10);
+      const totalSeconds = accumulated + Math.max(0, Math.floor((now - lastStarted) / 1000));
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      
+      const lang = '{{ current_lang }}';
+      if (lang === 'ar') {
+        el.textContent = (h > 0 ? h + 'س ' : '') + (m > 0 ? m + 'د ' : '') + s + 'ث';
+      } else {
+        el.textContent = (h > 0 ? h + 'h ' : '') + (m > 0 ? m + 'm ' : '') + s + 's';
+      }
+    });
+  }
+
+  function pollTasks() {
+    const oldWrapper = document.getElementById('subordinate-live-tasks-wrapper');
+    if (!oldWrapper) return;
+    fetch(window.location.href, {cache: 'no-store'})
+      .then(r => r.text())
+      .then(html => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const fresh = doc.getElementById('subordinate-live-tasks-wrapper');
+        if (fresh) { oldWrapper.innerHTML = fresh.innerHTML; updateTimers(); }
+      })
+      .catch(e => console.error('Refresh error:', e));
+  }
+
+  setInterval(updateTimers, 1000);
+  setInterval(pollTasks, 7000);
+  updateTimers();
+});
+</script>
+{% endblock %}

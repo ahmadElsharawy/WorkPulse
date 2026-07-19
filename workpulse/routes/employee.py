@@ -21,13 +21,7 @@ def register_employee_routes(app):
                 'statuses': request.args.getlist('statuses'),
                 'created_from': request.args.get('created_from', ''),
                 'created_to': request.args.get('created_to', ''),
-                'creators': request.args.getlist('creators'),
-                'sub_employees': request.args.getlist('sub_employees'),
-                'sub_projects': request.args.getlist('sub_projects'),
-                'sub_statuses': request.args.getlist('sub_statuses'),
-                'sub_created_from': request.args.get('sub_created_from', ''),
-                'sub_created_to': request.args.get('sub_created_to', ''),
-                'sub_creators': request.args.getlist('sub_creators')
+                'creators': request.args.getlist('creators')
             }
             save_user_preferences(current_user.id, filters={'employee_dashboard': new_filters})
         else:
@@ -58,18 +52,7 @@ def register_employee_routes(app):
         created_to = request.args.get('created_to', '').strip()
         selected_creators = [int(x) for x in request.args.getlist('creators') if x.isdigit()]
         
-        selected_sub_employees = [int(x) for x in request.args.getlist('sub_employees') if x.isdigit()]
-        selected_sub_projects = []
-        for x in request.args.getlist('sub_projects'):
-            if x == 'none':
-                selected_sub_projects.append('none')
-            elif x.isdigit():
-                selected_sub_projects.append(int(x))
-                
-        selected_sub_statuses = request.args.getlist('sub_statuses')
-        sub_created_from = request.args.get('sub_created_from', '').strip()
-        sub_created_to = request.args.get('sub_created_to', '').strip()
-        selected_sub_creators = [int(x) for x in request.args.getlist('sub_creators') if x.isdigit()]
+
         
         query = '''
             SELECT t.*, u.full_name AS creator_name, p.name AS project_name
@@ -162,86 +145,6 @@ def register_employee_routes(app):
             WHERE em.manager_id = ?
         ''', (current_user.id,)).fetchall()
         
-        sub_query = '''
-            SELECT t.*, u.full_name AS employee_name, creator.full_name AS creator_name, p.name AS project_name
-            FROM tasks t
-            JOIN users u ON t.employee_id = u.id
-            JOIN employee_managers em ON u.id = em.employee_id
-            LEFT JOIN users creator ON t.creator_id = creator.id
-            LEFT JOIN projects p ON t.project_id = p.id
-            WHERE em.manager_id = ?
-              AND EXISTS (
-                  SELECT 1 FROM employee_projects ep1
-                  WHERE ep1.employee_id = t.employee_id AND ep1.project_id = t.project_id
-              )
-              AND EXISTS (
-                  SELECT 1 FROM employee_projects ep2
-                  WHERE ep2.employee_id = ? AND ep2.project_id = t.project_id
-              )
-        '''
-        sub_params = [current_user.id, current_user.id]
-        
-        if selected_sub_employees:
-            placeholders = ','.join('?' for _ in selected_sub_employees)
-            sub_query += f" AND t.employee_id IN ({placeholders})"
-            sub_params.extend(selected_sub_employees)
-            
-        if selected_sub_projects:
-            proj_conds = []
-            has_none = False
-            val_projs = []
-            for p in selected_sub_projects:
-                if p == 'none':
-                    has_none = True
-                else:
-                    val_projs.append(p)
-            if val_projs:
-                placeholders = ','.join('?' for _ in val_projs)
-                proj_conds.append(f"t.project_id IN ({placeholders})")
-                sub_params.extend(val_projs)
-            if has_none:
-                proj_conds.append("t.project_id IS NULL")
-            if proj_conds:
-                sub_query += f" AND ({' OR '.join(proj_conds)})"
-                
-        if selected_sub_statuses:
-            placeholders = ','.join('?' for _ in selected_sub_statuses)
-            sub_query += f" AND t.status IN ({placeholders})"
-            sub_params.extend(selected_sub_statuses)
-            
-        if sub_created_from:
-            sub_query += " AND t.created_at >= ?"
-            sub_params.append(f"{sub_created_from} 00:00")
-            
-        if sub_created_to:
-            sub_query += " AND t.created_at <= ?"
-            sub_params.append(f"{sub_created_to} 23:59")
-            
-        if selected_sub_creators:
-            placeholders = ','.join('?' for _ in selected_sub_creators)
-            sub_query += f" AND t.creator_id IN ({placeholders})"
-            sub_params.extend(selected_sub_creators)
-            
-        sub_query += " ORDER BY t.created_at DESC"
-        subordinate_tasks = db.execute(sub_query, sub_params).fetchall()
-
-        # Paginate subordinate tasks
-        sub_page = request.args.get('sub_page', 1, type=int)
-        sub_per_page = 20
-        total_sub_tasks = len(subordinate_tasks)
-        sub_total_pages = (total_sub_tasks + sub_per_page - 1) // sub_per_page
-        sub_page = max(1, min(sub_page, sub_total_pages)) if sub_total_pages > 0 else 1
-        sub_offset = (sub_page - 1) * sub_per_page
-        paginated_subordinate_tasks = subordinate_tasks[sub_offset:sub_offset+sub_per_page]
-        sub_page_range = get_pagination_range(sub_page, sub_total_pages)
-        sub_showing_from = sub_offset + 1 if total_sub_tasks > 0 else 0
-        sub_showing_to = min(sub_offset + sub_per_page, total_sub_tasks)
-
-        def sub_page_url(p):
-            args = request.args.to_dict(flat=False)
-            args['sub_page'] = [str(p)]
-            return url_for('employee_dashboard') + '?' + urllib.parse.urlencode(args, doseq=True)
-        
         projects_list = db.execute('''
             SELECT p.id, p.name FROM projects p
             JOIN employee_projects ep ON p.id = ep.project_id
@@ -259,14 +162,7 @@ def register_employee_routes(app):
             ORDER BY u.full_name
         ''', (current_user.id,)).fetchall()
         
-        sub_creators_list = db.execute('''
-            SELECT DISTINCT creator.id, creator.full_name, creator.username
-            FROM users creator
-            JOIN tasks t ON t.creator_id = creator.id
-            JOIN employee_managers em ON t.employee_id = em.employee_id
-            WHERE em.manager_id = ?
-            ORDER BY creator.full_name
-        ''', (current_user.id,)).fetchall()
+
         
         balance_rows = db.execute('''
             SELECT p.id, p.name, ep.allocated_hours,
@@ -329,7 +225,6 @@ def register_employee_routes(app):
             'employee/employee.html', 
             tasks=paginated_tasks, 
             subordinates=subordinates, 
-            subordinate_tasks=paginated_subordinate_tasks,
             projects_list=projects_list,
             creators_list=creators_list,
             selected_projects=selected_projects,
@@ -337,14 +232,6 @@ def register_employee_routes(app):
             created_from=created_from,
             created_to=created_to,
             selected_creators=selected_creators,
-            
-            sub_creators_list=sub_creators_list,
-            selected_sub_employees=selected_sub_employees,
-            selected_sub_projects=selected_sub_projects,
-            selected_sub_statuses=selected_sub_statuses,
-            sub_created_from=sub_created_from,
-            sub_created_to=sub_created_to,
-            selected_sub_creators=selected_sub_creators,
             assigned_project_balances=assigned_project_balances,
             chart_projects_labels=chart_projects_labels,
             chart_projects_data=chart_projects_data,
@@ -359,15 +246,7 @@ def register_employee_routes(app):
             page_url=page_url,
             showing_from=showing_from,
             showing_to=showing_to,
-            total_tasks=total_tasks,
-            
-            sub_page=sub_page,
-            sub_total_pages=sub_total_pages,
-            sub_page_range=sub_page_range,
-            sub_page_url=sub_page_url,
-            sub_showing_from=sub_showing_from,
-            sub_showing_to=sub_showing_to,
-            total_sub_tasks=total_sub_tasks
+            total_tasks=total_tasks
         )
 
     @app.route('/employee/add', methods=['GET', 'POST'])
@@ -812,3 +691,199 @@ def register_employee_routes(app):
             ORDER BY t.created_at DESC
         ''', (current_user.id,)).fetchall()
         return render_template('employee/pending_approvals.html', pending_sub_approvals=pending_sub_approvals)
+
+    @app.route('/employee/subordinate-tracking')
+    @role_required('Employee')
+    def employee_subordinate_live_tracking():
+        db = get_db()
+        
+        subordinates = db.execute('''
+            SELECT u.* FROM users u
+            JOIN employee_managers em ON u.id = em.employee_id
+            WHERE em.manager_id = ?
+        ''', (current_user.id,)).fetchall()
+        
+        if not subordinates:
+            flash('You have no subordinates.' if session.get('lang') != 'ar' else 'ليس لديك مرؤوسين.', 'info')
+            return redirect(url_for('employee_dashboard'))
+        
+        if 'reset' in request.args:
+            save_user_preferences(current_user.id, filters={'subordinate_tracking': {}})
+            return redirect(url_for('employee_subordinate_live_tracking'))
+        
+        if 'filter_applied' in request.args:
+            new_filters = {
+                'sub_employees': request.args.getlist('sub_employees'),
+                'sub_projects': request.args.getlist('sub_projects'),
+                'sub_statuses': request.args.getlist('sub_statuses'),
+                'sub_created_from': request.args.get('sub_created_from', ''),
+                'sub_created_to': request.args.get('sub_created_to', ''),
+                'sub_creators': request.args.getlist('sub_creators')
+            }
+            save_user_preferences(current_user.id, filters={'subordinate_tracking': new_filters})
+        else:
+            pref = get_user_preferences(current_user.id)
+            saved = pref.get('filters', {}).get('subordinate_tracking', {})
+            if saved:
+                params = []
+                for k, v in saved.items():
+                    if isinstance(v, list):
+                        for item in v:
+                            params.append((k, item))
+                    else:
+                        if v:
+                            params.append((k, v))
+                if params:
+                    params.append(('filter_applied', '1'))
+                    return redirect(url_for('employee_subordinate_live_tracking') + '?' + urllib.parse.urlencode(params))
+        
+        selected_sub_employees = [int(x) for x in request.args.getlist('sub_employees') if x.isdigit()]
+        selected_sub_projects = []
+        for x in request.args.getlist('sub_projects'):
+            if x == 'none':
+                selected_sub_projects.append('none')
+            elif x.isdigit():
+                selected_sub_projects.append(int(x))
+        selected_sub_statuses = request.args.getlist('sub_statuses')
+        sub_created_from = request.args.get('sub_created_from', '').strip()
+        sub_created_to = request.args.get('sub_created_to', '').strip()
+        selected_sub_creators = [int(x) for x in request.args.getlist('sub_creators') if x.isdigit()]
+        
+        sub_query = '''
+            SELECT t.*, u.full_name AS employee_name, creator.full_name AS creator_name, p.name AS project_name
+            FROM tasks t
+            JOIN users u ON t.employee_id = u.id
+            JOIN employee_managers em ON u.id = em.employee_id
+            LEFT JOIN users creator ON t.creator_id = creator.id
+            LEFT JOIN projects p ON t.project_id = p.id
+            WHERE em.manager_id = ?
+              AND EXISTS (
+                  SELECT 1 FROM employee_projects ep1
+                  WHERE ep1.employee_id = t.employee_id AND ep1.project_id = t.project_id
+              )
+              AND EXISTS (
+                  SELECT 1 FROM employee_projects ep2
+                  WHERE ep2.employee_id = ? AND ep2.project_id = t.project_id
+              )
+        '''
+        sub_params = [current_user.id, current_user.id]
+        
+        if selected_sub_employees:
+            placeholders = ','.join('?' for _ in selected_sub_employees)
+            sub_query += f" AND t.employee_id IN ({placeholders})"
+            sub_params.extend(selected_sub_employees)
+            
+        if selected_sub_projects:
+            proj_conds = []
+            has_none = False
+            val_projs = []
+            for p in selected_sub_projects:
+                if p == 'none':
+                    has_none = True
+                else:
+                    val_projs.append(p)
+            if val_projs:
+                placeholders = ','.join('?' for _ in val_projs)
+                proj_conds.append(f"t.project_id IN ({placeholders})")
+                sub_params.extend(val_projs)
+            if has_none:
+                proj_conds.append("t.project_id IS NULL")
+            if proj_conds:
+                sub_query += f" AND ({' OR '.join(proj_conds)})"
+                
+        if selected_sub_statuses:
+            placeholders = ','.join('?' for _ in selected_sub_statuses)
+            sub_query += f" AND t.status IN ({placeholders})"
+            sub_params.extend(selected_sub_statuses)
+            
+        if sub_created_from:
+            sub_query += " AND t.created_at >= ?"
+            sub_params.append(f"{sub_created_from} 00:00")
+            
+        if sub_created_to:
+            sub_query += " AND t.created_at <= ?"
+            sub_params.append(f"{sub_created_to} 23:59")
+            
+        if selected_sub_creators:
+            placeholders = ','.join('?' for _ in selected_sub_creators)
+            sub_query += f" AND t.creator_id IN ({placeholders})"
+            sub_params.extend(selected_sub_creators)
+            
+        sub_query += " ORDER BY t.created_at DESC"
+        all_subordinate_tasks = db.execute(sub_query, sub_params).fetchall()
+        
+        # Pagination
+        def get_pagination_range(curr, total):
+            if total <= 7:
+                return list(range(1, total + 1))
+            res = []
+            if curr <= 4:
+                res.extend([1, 2, 3, 4])
+                res.append(None)
+                res.append(total)
+            elif curr >= total - 3:
+                res.append(1)
+                res.append(None)
+                res.extend(range(total - 3, total + 1))
+            else:
+                res.append(1)
+                res.append(None)
+                res.extend([curr - 1, curr, curr + 1])
+                res.append(None)
+                res.append(total)
+            return res
+        
+        sub_page = request.args.get('page', 1, type=int)
+        sub_per_page = 20
+        total_sub_tasks = len(all_subordinate_tasks)
+        sub_total_pages = (total_sub_tasks + sub_per_page - 1) // sub_per_page
+        sub_page = max(1, min(sub_page, sub_total_pages)) if sub_total_pages > 0 else 1
+        sub_offset = (sub_page - 1) * sub_per_page
+        paginated_subordinate_tasks = all_subordinate_tasks[sub_offset:sub_offset+sub_per_page]
+        sub_page_range = get_pagination_range(sub_page, sub_total_pages)
+        sub_showing_from = sub_offset + 1 if total_sub_tasks > 0 else 0
+        sub_showing_to = min(sub_offset + sub_per_page, total_sub_tasks)
+        
+        def sub_page_url(p):
+            args = request.args.to_dict(flat=False)
+            args['page'] = [str(p)]
+            return url_for('employee_subordinate_live_tracking') + '?' + urllib.parse.urlencode(args, doseq=True)
+        
+        projects_list = db.execute('''
+            SELECT p.id, p.name FROM projects p
+            JOIN employee_projects ep ON p.id = ep.project_id
+            WHERE ep.employee_id = ?
+            ORDER BY p.name
+        ''', (current_user.id,)).fetchall()
+        if not projects_list:
+            projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
+        
+        sub_creators_list = db.execute('''
+            SELECT DISTINCT creator.id, creator.full_name, creator.username
+            FROM users creator
+            JOIN tasks t ON t.creator_id = creator.id
+            JOIN employee_managers em ON t.employee_id = em.employee_id
+            WHERE em.manager_id = ?
+            ORDER BY creator.full_name
+        ''', (current_user.id,)).fetchall()
+        
+        return render_template(
+            'employee/subordinate_live_tracking.html',
+            subordinates=subordinates,
+            subordinate_tasks=paginated_subordinate_tasks,
+            projects_list=projects_list,
+            sub_creators_list=sub_creators_list,
+            selected_sub_employees=selected_sub_employees,
+            selected_sub_projects=selected_sub_projects,
+            selected_sub_statuses=selected_sub_statuses,
+            sub_created_from=sub_created_from,
+            sub_created_to=sub_created_to,
+            selected_sub_creators=selected_sub_creators,
+            sub_page=sub_page,
+            sub_total_pages=sub_total_pages,
+            sub_page_range=sub_page_range,
+            sub_page_url=sub_page_url,
+            sub_showing_from=sub_showing_from,
+            sub_showing_to=sub_showing_to,
+            total_sub_tasks=total_sub_tasks
+        )

@@ -4,6 +4,7 @@
 <!-- Override container padding for login -->
 <style>
   .container.mt-4 { max-width: 100%; padding: 0; margin: 0 !important; }
+  .wp-footer { display: none; }
 </style>
 <div class='login-wrapper'>
   <div class='login-card card p-4 p-md-5'>
@@ -13,11 +14,21 @@
 
     <form method='post'>
       <div class='mb-4'>
-        <label class='form-label' for='login-username'>Username</label>
+        <label class='form-label' for='login-username'>
+          <svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
+            <path d='M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z'/>
+          </svg>
+          Username
+        </label>
         <input type='text' id='login-username' name='username' class='form-control form-control-lg' placeholder='Enter your username' required autocomplete='username'>
       </div>
       <div class='mb-4'>
-        <label class='form-label' for='login-password'>Password</label>
+        <label class='form-label' for='login-password'>
+          <svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' fill='currentColor' class='me-1' viewBox='0 0 16 16'>
+            <path d='M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2'/>
+          </svg>
+          Password
+        </label>
         <input type='password' id='login-password' name='password' class='form-control form-control-lg' placeholder='••••••••' required autocomplete='current-password'>
       </div>
       <button type='submit' class='btn btn-primary w-100 py-2' style='font-size:1rem;'>
@@ -28,9 +39,9 @@
       </button>
     </form>
 
-    <p class='text-center text-muted mt-4 mb-0' style='font-size:.78rem;'>
-      WorkPulse &copy; {{ 2026 }}
-    </p>
+    <div class='text-center mt-4 mb-0'>
+      <span style='font-size:.78rem;color:var(--text-muted);'>⚡ WorkPulse &copy; {{ 2026 }}</span>
+    </div>
   </div>
 </div>
 {% endblock %}
