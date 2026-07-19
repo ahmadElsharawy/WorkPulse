@@ -477,7 +477,12 @@
 
           <div class='col-6 col-sm-3'>
             <div class='p-2.5 rounded-3 bg-white border shadow-xs h-100'>
-              <span class='text-muted d-block small mb-1' style='font-size: 0.72rem;'>🌴 {{ 'بدل الإجازات' if current_lang == 'ar' else 'Leaves' }}</span>
+              <span class='text-muted d-block small mb-1' style='font-size: 0.72rem;'>
+                🌴 {{ 'بدل الإجازات' if current_lang == 'ar' else 'Leaves' }}
+                <span id="top-leaves-basis-badge" class="badge bg-primary-subtle text-primary ms-0.5" style="font-size: 0.62rem;">
+                  {{ 'على الشامل' if current_lang == 'ar' else 'Full Wage' }}
+                </span>
+              </span>
               <h6 class='fw-bold text-success mb-0' id="top-leave-encashment">{{ "%.2f"|format(gratuity_info.leave_encashment_amount) }}</h6>
             </div>
           </div>
@@ -776,6 +781,11 @@
             }
             if (topLeaveEncashment) {
               topLeaveEncashment.textContent = leaveVal.toFixed(2);
+            }
+            var topLeavesBasisBadge = document.getElementById('top-leaves-basis-badge');
+            if (topLeavesBasisBadge) {
+              topLeavesBasisBadge.textContent = isAr ? (basis === 'basic' ? 'على الأساسي' : 'على الشامل') : (basis === 'basic' ? 'Basic Wage' : 'Full Wage');
+              topLeavesBasisBadge.className = 'badge ms-0.5 ' + (basis === 'basic' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary');
             }
             if (topWageLabel) {
               topWageLabel.style.display = 'inline-block';
