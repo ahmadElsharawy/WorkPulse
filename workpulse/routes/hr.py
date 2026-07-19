@@ -1,10 +1,13 @@
 import sqlite3
 import urllib.parse
+import io
+import pandas as pd
 from datetime import datetime, timedelta
-from flask import render_template, request, redirect, url_for, flash, jsonify, session
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_login import login_required, current_user
 from workpulse.decorators import role_required
 from workpulse.database import get_db, get_manager_ids, set_manager_ids, seed_mock_data, get_user_preferences, save_user_preferences
+from workpulse.helpers import calculate_uae_gratuity_and_leaves
 from workpulse.extensions import bcrypt
 
 def register_hr_routes(app):
@@ -57,6 +60,108 @@ def register_hr_routes(app):
         db = get_db()
         users = db.execute('SELECT * FROM users WHERE role != ?', ('HR',)).fetchall()
         return render_template('hr/hr_employees.html', users=users)
+
+    @app.route('/hr/employees/export-excel')
+    @role_required('HR')
+    def export_employees_excel():
+        db = get_db()
+        users = db.execute('SELECT * FROM users WHERE role != ? ORDER BY id ASC', ('HR',)).fetchall()
+        
+        main_rows = []
+        leaves_rows = []
+        adjustments_rows = []
+
+        for index, u in enumerate(users, start=1):
+            eos_info = calculate_uae_gratuity_and_leaves(u, db)
+            
+            # 1. Main Comprehensive Sheet Row
+            main_rows.append({
+                '#': index,
+                'ID المعرف': u['id'],
+                'رقم الموظف (Emp No)': u['employee_number'] or u['username'],
+                'الاسم الكامل (Full Name)': u['full_name'],
+                'اسم المستخدم (Username)': u['username'],
+                'الدور (Role)': u['role'],
+                'المسمى الوظيفي (Position)': u['position'] or '-',
+                'القسم (Department)': u['department'] or '-',
+                'البريد الإلكتروني (Email)': u['email'] or '-',
+                'رقم الهاتف (Phone)': u['phone'] or '-',
+                'حالة الموظف (Status)': 'على رأس العمل' if not u['termination_date'] else 'منتهي الخدمة',
+                'تاريخ التعيين (Hire Date)': u['hire_date'] or '-',
+                'تاريخ التصفية (Termination Date)': u['termination_date'] or '-',
+                'تاريخ انتهاء الإقامة (Residence End Date)': u['residence_permit_end_date'] or '-',
+                'مدة الخدمة (Calculated Tenure)': eos_info.get('tenure_text', 'غير محدد'),
+                'أيام الخدمة الفعلية (Active Days)': eos_info.get('active_days', 0),
+                'الراتب الأساسي (Basic Salary AED)': float(u['basic_salary'] or 0.0),
+                'الراتب الشامل (Total Salary AED)': float(u['total_salary'] or 0.0),
+                'أجر اليوم الأساسي (Daily Basic Wage AED)': eos_info.get('daily_basic', 0.0),
+                'أجر اليوم الشامل (Daily Total Wage AED)': eos_info.get('daily_total', 0.0),
+                'أيام مكافأة نهاية الخدمة (Gratuity Days)': eos_info.get('gratuity_net_days', 0.0),
+                'مكافأة نهاية الخدمة (Gratuity Amount AED)': eos_info.get('gratuity_amount', 0.0),
+                'إجمالي الإجازات السنوية المكتسبة (Accrued Annual Leaves)': eos_info.get('accrued_leave_days', 0.0),
+                'الإجازات السنوية المستهلكة (Used Annual Leaves)': eos_info.get('used_leave_days', 0.0),
+                'رصيد الإجازات المتبقي (Net Remaining Leaves)': eos_info.get('remaining_leave_days', 0.0),
+                'بدل الإجازات على الأساسي (Leave Encashment Basic AED)': eos_info.get('leave_encashment_basic_amount', 0.0),
+                'بدل الإجازات على الشامل (Leave Encashment Full AED)': eos_info.get('leave_encashment_amount', 0.0),
+                'أيام الإجازات المرضية (Sick Leave Days)': eos_info.get('sick_leave_days', 0.0),
+                'أيام إجازة الوالدية (Parental Leave Days)': eos_info.get('parental_leave_days', 0.0),
+                'أيام إجازة الحداد (Bereavement Leave Days)': eos_info.get('bereavement_leave_days', 0.0),
+                'أيام إجازة بدون أجر مستبعدة (Unpaid Leave Days)': eos_info.get('unpaid_leave_days', 0.0),
+                'إجمالي الإضافات المالية (+Financial Additions AED)': eos_info.get('additional_additions', 0.0),
+                'إجمالي الخصومات المالية (-Financial Deductions AED)': eos_info.get('additional_deductions', 0.0),
+                'صافي المستحقات للتصفية النهائية (Net Final Settlement AED)': eos_info.get('net_settlement_amount', 0.0),
+                'ملاحظات ومبررات الـ HR (HR Adjustment Notes)': eos_info.get('adjustment_notes', '')
+            })
+
+            # 2. Leaves History Sheet Rows
+            for l in eos_info.get('leaves_history', []):
+                leaves_rows.append({
+                    'ID الموظف': u['id'],
+                    'اسم الموظف': u['full_name'],
+                    'نوع الإجازة': l.get('leave_type', '-'),
+                    'من تاريخ': l.get('start_date', '-'),
+                    'إلى تاريخ': l.get('end_date', '-'),
+                    'عدد الأيام': l.get('duration_days', 0),
+                    'السبب / الملاحظات': l.get('reason', '-')
+                })
+
+            # 3. Financial Adjustments Sheet Rows
+            for f in eos_info.get('financial_items', []):
+                adjustments_rows.append({
+                    'ID الموظف': u['id'],
+                    'اسم الموظف': u['full_name'],
+                    'نوع البند': 'إضافة (+)' if f.get('item_type') == 'addition' else 'خصم (-)',
+                    'المبلغ (AED)': f.get('amount', 0.0),
+                    'سبب البند المالي': f.get('reason', '-'),
+                    'المسجل': f.get('created_by', 'HR'),
+                    'تاريخ التسجيل': f.get('created_at', '-')
+                })
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_main = pd.DataFrame(main_rows)
+            df_main.to_excel(writer, sheet_name='الموظفون والتصفية المالية', index=False)
+
+            if leaves_rows:
+                df_leaves = pd.DataFrame(leaves_rows)
+                df_leaves.to_excel(writer, sheet_name='سجل الإجازات التفصيلي', index=False)
+            else:
+                pd.DataFrame([{'ملاحظة': 'لا توجد إجازات تفصيلية مسجلة'}]).to_excel(writer, sheet_name='سجل الإجازات التفصيلي', index=False)
+
+            if adjustments_rows:
+                df_adjustments = pd.DataFrame(adjustments_rows)
+                df_adjustments.to_excel(writer, sheet_name='البنود المالية المسببة', index=False)
+            else:
+                pd.DataFrame([{'ملاحظة': 'لا توجد بنود مالية مسببة مسجلة'}]).to_excel(writer, sheet_name='البنود المالية المسببة', index=False)
+
+        output.seek(0)
+        filename = f"WorkPulse_Comprehensive_Employees_Report_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
 
     @app.route('/hr/projects')
     @role_required('HR')

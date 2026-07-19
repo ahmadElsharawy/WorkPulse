@@ -7,7 +7,10 @@
     <h1 class='page-title'>{{ _('existing_employees') }}</h1>
     <p class='page-subtitle'>{{ 'إضافة وإدارة موظفي الشركة وصلاحياتهم' if current_lang == 'ar' else 'Add and manage company employees and their roles' }}</p>
   </div>
-  <div class='d-flex gap-2'>
+  <div class='d-flex gap-2 flex-wrap'>
+    <a href='{{ url_for('export_employees_excel') }}' class='btn btn-outline-success fw-bold d-flex align-items-center gap-1.5'>
+      📊 {{ 'تحميل ملف إكسل الشامل للموظفين' if current_lang == 'ar' else 'Export Comprehensive Employees Excel' }}
+    </a>
     <a href='{{ url_for('add_employee') }}' class='btn btn-success'>+ {{ _('add_employee') }}</a>
     <a href='{{ url_for("hr_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
   </div>
