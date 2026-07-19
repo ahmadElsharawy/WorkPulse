@@ -163,10 +163,14 @@ def leaves_create():
     db = get_db()
     now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # Check if employee has assigned managers
-    managers = db.execute('''
-        SELECT manager_id FROM employee_managers WHERE employee_id = ?
-    ''', (current_user.id,)).fetchall()
+    # Check if this request is standard Annual Leave (ONLY standard Annual Leave requires Manager approval)
+    is_standard_annual = (leave_type in ['إجازة سنوية', 'annual', 'Annual Leave'])
+
+    managers = []
+    if is_standard_annual:
+        managers = db.execute('''
+            SELECT manager_id FROM employee_managers WHERE employee_id = ?
+        ''', (current_user.id,)).fetchall()
     
     initial_status = 'pending_managers' if managers else 'pending_hr'
     
@@ -187,11 +191,11 @@ def leaves_create():
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (leave_id, mgr['manager_id'], 'Manager', idx, step_status, now_str))
     else:
-        # Directly create HR approval step
+        # Directly create HR approval step (for non-annual leaves or employees with no managers)
         cursor.execute('''
             INSERT INTO leave_request_approvals (leave_request_id, approver_id, approver_role, approval_order, status, assigned_at)
-            VALUES (?, NULL, ?, 1, ?, ?)
-        ''', (leave_id, 'HR', 'pending', now_str))
+            VALUES (?, NULL, 'HR', 1, 'pending', ?)
+        ''', (leave_id, now_str))
         
     db.commit()
     flash('تم تقديم طلب الإجازة بنجاح وهو قيد المتابعة.', 'success')

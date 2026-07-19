@@ -447,3 +447,24 @@ def get_pending_approvals_count(user):
     except Exception:
         return 0
 
+
+def get_pending_leave_requests_count(user):
+    """Return count of leave requests pending approval for the given user (HR or Manager)."""
+    if not user or not user.is_authenticated:
+        return 0
+    try:
+        db = get_db()
+        if getattr(user, 'is_hr', False) or user.role == 'HR':
+            row = db.execute('''
+                SELECT COUNT(*) FROM leave_request_approvals 
+                WHERE approver_role = 'HR' AND status = 'pending'
+            ''').fetchone()
+        else:
+            row = db.execute('''
+                SELECT COUNT(*) FROM leave_request_approvals 
+                WHERE approver_id = ? AND status = 'pending'
+            ''', (user.id,)).fetchone()
+        return row[0] if row else 0
+    except Exception:
+        return 0
+

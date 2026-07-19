@@ -200,7 +200,7 @@ def calculate_uae_gratuity_and_leaves(employee, db):
         if l_start and l_start < cycle_start_date:
             is_in_current_cycle = False
 
-        if l_type == 'annual' or 'سنو' in l_type or 'annual' in l_type:
+        if l_type == 'annual' or 'سنو' in l_type or 'annual' in l_type or 'بدل' in l_type or 'encash' in l_type:
             if is_in_current_cycle:
                 leave_counts['annual'] += dur
         elif l_type == 'unpaid' or 'بدون' in l_type or 'unpaid' in l_type:
@@ -279,7 +279,7 @@ def calculate_uae_gratuity_and_leaves(employee, db):
         used_in_this_year = 0.0
         for r in leave_rows:
             raw_type = str(r['leave_type'] or 'annual').strip().lower()
-            if raw_type == 'annual' or 'سنو' in raw_type or 'annual' in raw_type:
+            if raw_type == 'annual' or 'سنو' in raw_type or 'annual' in raw_type or 'بدل' in raw_type or 'encash' in raw_type:
                 if r['start_date'] and str(r['start_date']).strip():
                     try:
                         l_start = datetime.strptime(str(r['start_date']).strip(), '%Y-%m-%d').date()
@@ -288,10 +288,13 @@ def calculate_uae_gratuity_and_leaves(employee, db):
                     except (ValueError, TypeError):
                         pass
 
-        unused_year_end = max(0.0, total_avail - used_in_this_year)
+        unused_year_end = total_avail - used_in_this_year
 
         if not is_last_year:
-            carried_out = min(15.0, unused_year_end)
+            if unused_year_end >= 0:
+                carried_out = min(15.0, unused_year_end)
+            else:
+                carried_out = unused_year_end
         else:
             carried_out = unused_year_end
 
@@ -327,10 +330,10 @@ def calculate_uae_gratuity_and_leaves(employee, db):
         remaining_leave_days = last_year['unused_year_end_days']
     else:
         used_annual_leave_days = leave_counts['annual']
-        remaining_leave_days = max(0.0, accrued_leave_days - used_annual_leave_days)
+        remaining_leave_days = accrued_leave_days - used_annual_leave_days
     
-    leave_encashment_basic_amount = max(0.0, remaining_leave_days * daily_basic)
-    leave_encashment_amount = max(0.0, remaining_leave_days * daily_total)
+    leave_encashment_basic_amount = remaining_leave_days * daily_basic
+    leave_encashment_amount = remaining_leave_days * daily_total
 
     # Fetch HR Adjustments & Custom UAE Leaves
     adj_row = db.execute('''

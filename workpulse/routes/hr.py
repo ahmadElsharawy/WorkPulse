@@ -408,7 +408,12 @@ def register_hr_routes(app):
             flash('Employee not found.', 'danger')
             return redirect(url_for('hr_employees'))
 
-        leave_type = request.form.get('leave_type', 'annual').strip()
+        leave_type_input = request.form.get('leave_type', 'annual').strip()
+        if leave_type_input == 'annual_encashment':
+            leave_type = 'بدل إجازة سنوية (صرف نقدي)'
+        else:
+            leave_type = leave_type_input
+
         start_date_str = request.form.get('start_date', '').strip()
         end_date_str = request.form.get('end_date', '').strip()
         reason = request.form.get('reason', '').strip()
@@ -438,7 +443,7 @@ def register_hr_routes(app):
         ''', (user_id, leave_type, start_date_str, end_date_str, duration_days, reason, now_str, now_str))
         db.commit()
 
-        flash(f'تم إدراج وتسجيل إجازة ({leave_type}) لمدة {duration_days} يوم بنجاح من {start_date_str} إلى {end_date_str}.' if session.get('lang') == 'ar' else 'Leave added successfully.', 'success')
+        flash(f'تم إدراج وتسجيل ({leave_type}) لمدة {duration_days} يوم بنجاح من {start_date_str} إلى {end_date_str}.' if session.get('lang') == 'ar' else 'Leave added successfully.', 'success')
         return redirect(url_for('hr_employee_end_of_service', user_id=user_id))
 
     @app.route('/hr/employees/<int:user_id>/end-of-service/delete-leave/<int:leave_id>', methods=['POST'])

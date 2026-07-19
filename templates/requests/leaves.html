@@ -253,6 +253,7 @@
               <label class="form-label fw-semibold" style="color: #1e293b !important;">{{ 'نوع الإجازة' if current_lang == 'ar' else 'Leave Type' }}</label>
               <select name="leave_type" class="form-select py-2" style="background-color: #ffffff !important; color: #1e293b !important; border: 1px solid #cbd5e1 !important;" required>
                 <option value="إجازة سنوية">{{ 'إجازة سنوية (Annual Leave)' if current_lang == 'ar' else 'Annual Leave' }}</option>
+                <option value="بدل إجازة سنوية (صرف نقدي)">💵 {{ 'بدل إجازة سنوية - صرف نقدي (Leave Encashment)' if current_lang == 'ar' else 'Annual Leave Encashment (Cash)' }}</option>
                 <option value="إجازة مرضية">{{ 'إجازة مرضية (Sick Leave)' if current_lang == 'ar' else 'Sick Leave' }}</option>
                 <option value="إجازة عارضة">{{ 'إجازة عارضة (Casual Leave)' if current_lang == 'ar' else 'Casual Leave' }}</option>
                 <option value="إجازة بدون راتب">{{ 'إجازة بدون راتب (Unpaid Leave)' if current_lang == 'ar' else 'Unpaid Leave' }}</option>
@@ -261,7 +262,7 @@
 
             <div class="col-md-6">
               <div class="p-3 rounded bg-light border text-secondary fs-7" style="background-color: #f8fafc !important; color: #475569 !important;">
-                💡 {{ 'سيتم توجيه الطلب تلقائياً لمديريك المباشرين للتسلسل في موافقته قبل الاعتماد النهائى من HR.' if current_lang == 'ar' else 'Request will automatically route through your manager approval chain before HR final approval.' }}
+                💡 {{ 'ملاحظة: طلبات الإجازة السنوية فقط تمر على موافقة المدير المباشر أولاً. باقي أنواع الإجازات وبدل الإجازات النقدي تذهب مباشرةً للـ HR.' if current_lang == 'ar' else 'Note: Only Annual Leave requests require Manager approval first. All other leave types and Cash Encashments go directly to HR.' }}
               </div>
             </div>
 

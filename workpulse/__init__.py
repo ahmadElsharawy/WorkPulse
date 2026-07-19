@@ -4,7 +4,7 @@ from flask import Flask, request, session
 from flask_login import current_user
 
 from .config import Config
-from .database import close_db, get_pending_approvals_count, get_user_preferences
+from .database import close_db, get_pending_approvals_count, get_pending_leave_requests_count, get_user_preferences
 from .extensions import bcrypt, login_manager
 from .filters import datetimeformat, format_balance, format_duration, total_seconds, translate
 from .routes.auth import register_auth_routes
@@ -43,10 +43,12 @@ def create_app():
     @app.context_processor
     def utility_processor():
         pending_count = get_pending_approvals_count(current_user)
+        pending_leave_count = get_pending_leave_requests_count(current_user)
         return dict(
             _=translate,
             current_lang=session.get('lang', 'ar'),
             pending_count=pending_count,
+            pending_leave_count=pending_leave_count,
         )
 
     # Before request user preference sync
