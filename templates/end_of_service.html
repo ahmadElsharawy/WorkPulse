@@ -21,9 +21,9 @@
       line-height: 1.15 !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
-      height: 100vh !important;
-      max-height: 100vh !important;
-      overflow: hidden !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
       box-sizing: border-box !important;
     }
 
@@ -150,7 +150,7 @@
       font-size: 9px !important;
     }
 
-    * {
+    .card, .settlement-banner, table, tr, .signature-footer {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
@@ -1100,8 +1100,8 @@
   </div> <!-- end of print-right-column -->
 </div> <!-- end of settlement-print-wrapper -->
 
-<!-- Official Legal Disclaimer & Signature Footer for Print -->
-<div class='card border-0 shadow-sm p-4 bg-white rounded-3 border mb-4 signature-footer screen-only'>
+<!-- Official Legal Disclaimer & Signature Footer for Screen & Print -->
+<div class='card border-0 shadow-sm p-4 bg-white rounded-3 border mb-4 signature-footer'>
   <div class='row g-4 align-items-center'>
     <div class='col-md-8'>
       <h6 class='fw-bold text-dark mb-1'>⚖️ {{ 'إقرار وتصديق التصفية المالية' if current_lang == 'ar' else 'Official Settlement Declaration' }}</h6>
