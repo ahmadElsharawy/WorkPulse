@@ -581,7 +581,7 @@
               </tr>
             {% endfor %}
 
-            {% if gratuity_info.unpaid_leave_days > 0 %}
+            {% if gratuity_info.unpaid_leave_days and gratuity_info.unpaid_leave_days > 0 %}
               <tr class="table-warning align-middle">
                 <th class="text-dark fw-bold">
                   🛑 {{ 'أيام إجازة بدون أجر (مستبعدة من الخدمة):' if current_lang == 'ar' else 'Unpaid Leave Days (excluded from service):' }}

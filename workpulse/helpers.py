@@ -1,38 +1,54 @@
 import sqlite3
 from datetime import datetime
 
+def _default_eos_response(employee=None, daily_basic=0.0, daily_total=0.0):
+    termination_date_str = employee['termination_date'] if employee and 'termination_date' in employee.keys() else None
+    return {
+        'has_hire_date': False,
+        'tenure_years': 0.0,
+        'tenure_text': 'غير محدد',
+        'gratuity_amount': 0.0,
+        'gratuity_net_days': 0.0,
+        'gratuity_tier1_days': 0.0,
+        'gratuity_tier1_amount': 0.0,
+        'gratuity_tier2_days': 0.0,
+        'gratuity_tier2_amount': 0.0,
+        'accrued_leave_days': 0.0,
+        'used_leave_days': 0.0,
+        'remaining_leave_days': 0.0,
+        'daily_basic': round(daily_basic, 2),
+        'daily_total': round(daily_total, 2),
+        'leave_encashment_amount': 0.0,
+        'leave_encashment_basic_amount': 0.0,
+        'sick_leave_days': 0.0,
+        'parental_leave_days': 0.0,
+        'bereavement_leave_days': 0.0,
+        'study_leave_days': 0.0,
+        'hajj_leave_days': 0.0,
+        'other_leave_days': 0.0,
+        'unpaid_leave_days': 0.0,
+        'active_days': 0,
+        'additional_additions': 0.0,
+        'additional_deductions': 0.0,
+        'net_settlement_amount': 0.0,
+        'net_settlement_basic_amount': 0.0,
+        'adjustment_notes': '',
+        'updated_by': '',
+        'updated_at': '',
+        'leaves_history': [],
+        'financial_items': [],
+        'gratuity_day_items': [],
+        'yearly_leave_ledger': [],
+        'accrual_text': 'غير محدد',
+        'is_active': not bool(termination_date_str)
+    }
+
 def calculate_uae_gratuity_and_leaves(employee, db):
     """
     Calculates End of Service Gratuity (EOSG), Annual & Custom UAE Leave Types, HR Adjustments and Net Settlement.
     """
     if not employee:
-        return {
-            'has_hire_date': False,
-            'tenure_years': 0.0,
-            'tenure_text': 'غير محدد',
-            'gratuity_amount': 0.0,
-            'accrued_leave_days': 0.0,
-            'used_leave_days': 0.0,
-            'remaining_leave_days': 0.0,
-            'daily_basic': 0.0,
-            'daily_total': 0.0,
-            'leave_encashment_amount': 0.0,
-            'sick_leave_days': 0.0,
-            'parental_leave_days': 0.0,
-            'bereavement_leave_days': 0.0,
-            'study_leave_days': 0.0,
-            'hajj_leave_days': 0.0,
-            'other_leave_days': 0.0,
-            'additional_additions': 0.0,
-            'additional_deductions': 0.0,
-            'net_settlement_amount': 0.0,
-            'adjustment_notes': '',
-            'updated_by': '',
-            'updated_at': '',
-            'leaves_history': [],
-            'financial_items': [],
-            'is_active': True
-        }
+        return _default_eos_response()
 
     basic_salary = float(employee['basic_salary'] or 0.0) if 'basic_salary' in employee.keys() else 0.0
     total_salary = float(employee['total_salary'] or 0.0) if 'total_salary' in employee.keys() else 0.0
@@ -43,64 +59,12 @@ def calculate_uae_gratuity_and_leaves(employee, db):
     daily_total = total_salary / 30.0 if total_salary > 0 else daily_basic
     
     if not hire_date_str:
-        return {
-            'has_hire_date': False,
-            'tenure_years': 0.0,
-            'tenure_text': 'غير محدد',
-            'gratuity_amount': 0.0,
-            'accrued_leave_days': 0.0,
-            'used_leave_days': 0.0,
-            'remaining_leave_days': 0.0,
-            'daily_basic': round(daily_basic, 2),
-            'daily_total': round(daily_total, 2),
-            'leave_encashment_amount': 0.0,
-            'sick_leave_days': 0.0,
-            'parental_leave_days': 0.0,
-            'bereavement_leave_days': 0.0,
-            'study_leave_days': 0.0,
-            'hajj_leave_days': 0.0,
-            'other_leave_days': 0.0,
-            'additional_additions': 0.0,
-            'additional_deductions': 0.0,
-            'net_settlement_amount': 0.0,
-            'adjustment_notes': '',
-            'updated_by': '',
-            'updated_at': '',
-            'leaves_history': [],
-            'financial_items': [],
-            'is_active': not bool(termination_date_str)
-        }
+        return _default_eos_response(employee, daily_basic, daily_total)
         
     try:
         hire_date = datetime.strptime(str(hire_date_str).strip(), '%Y-%m-%d').date()
     except (ValueError, TypeError):
-        return {
-            'has_hire_date': False,
-            'tenure_years': 0.0,
-            'tenure_text': 'غير محدد',
-            'gratuity_amount': 0.0,
-            'accrued_leave_days': 0.0,
-            'used_leave_days': 0.0,
-            'remaining_leave_days': 0.0,
-            'daily_basic': round(daily_basic, 2),
-            'daily_total': round(daily_total, 2),
-            'leave_encashment_amount': 0.0,
-            'sick_leave_days': 0.0,
-            'parental_leave_days': 0.0,
-            'bereavement_leave_days': 0.0,
-            'study_leave_days': 0.0,
-            'hajj_leave_days': 0.0,
-            'other_leave_days': 0.0,
-            'additional_additions': 0.0,
-            'additional_deductions': 0.0,
-            'net_settlement_amount': 0.0,
-            'adjustment_notes': '',
-            'updated_by': '',
-            'updated_at': '',
-            'leaves_history': [],
-            'financial_items': [],
-            'is_active': not bool(termination_date_str)
-        }
+        return _default_eos_response(employee, daily_basic, daily_total)
 
     if termination_date_str and str(termination_date_str).strip():
         try:
