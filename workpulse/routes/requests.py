@@ -1,7 +1,5 @@
-import sqlite3
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from workpulse.database import get_db
 

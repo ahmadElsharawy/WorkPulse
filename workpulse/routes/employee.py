@@ -1,5 +1,5 @@
-import urllib.parse
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 from flask import render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from workpulse.decorators import role_required
@@ -38,7 +38,7 @@ def register_employee_routes(app):
                             params.append((k, v))
                 if params:
                     params.append(('filter_applied', '1'))
-                    return redirect(url_for('employee_dashboard') + '?' + urllib.parse.urlencode(params))
+                    return redirect(url_for('employee_dashboard') + '?' + urlencode(params))
         
         selected_projects = []
         for x in request.args.getlist('projects'):
@@ -137,7 +137,7 @@ def register_employee_routes(app):
         def page_url(p):
             args = request.args.to_dict(flat=False)
             args['page'] = [str(p)]
-            return url_for('employee_dashboard') + '?' + urllib.parse.urlencode(args, doseq=True)
+            return url_for('employee_dashboard') + '?' + urlencode(args, doseq=True)
         
         subordinates = db.execute('''
             SELECT u.* FROM users u
@@ -779,7 +779,7 @@ def register_employee_routes(app):
         def page_url(p):
             args = request.args.to_dict(flat=False)
             args['page'] = [str(p)]
-            return url_for('pending_approvals') + '?' + urllib.parse.urlencode(args, doseq=True)
+            return url_for('pending_approvals') + '?' + urlencode(args, doseq=True)
 
         return render_template(
             'employee/pending_approvals.html',
@@ -836,7 +836,7 @@ def register_employee_routes(app):
                             params.append((k, v))
                 if params:
                     params.append(('filter_applied', '1'))
-                    return redirect(url_for('employee_subordinate_live_tracking') + '?' + urllib.parse.urlencode(params))
+                    return redirect(url_for('employee_subordinate_live_tracking') + '?' + urlencode(params))
         
         selected_sub_employees = [int(x) for x in request.args.getlist('sub_employees') if x.isdigit()]
         selected_sub_projects = []
@@ -948,7 +948,7 @@ def register_employee_routes(app):
         def sub_page_url(p):
             args = request.args.to_dict(flat=False)
             args['page'] = [str(p)]
-            return url_for('employee_subordinate_live_tracking') + '?' + urllib.parse.urlencode(args, doseq=True)
+            return url_for('employee_subordinate_live_tracking') + '?' + urlencode(args, doseq=True)
         
         projects_list = db.execute('''
             SELECT p.id, p.name FROM projects p

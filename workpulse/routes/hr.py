@@ -1,7 +1,6 @@
-import sqlite3
-import urllib.parse
 import io
 import pandas as pd
+from urllib.parse import urlencode
 from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_login import login_required, current_user
@@ -1023,7 +1022,7 @@ def register_hr_routes(app):
                             params.append((k, v))
                 if params:
                     params.append(('filter_applied', '1'))
-                    return redirect(url_for('hr_tracking') + '?' + urllib.parse.urlencode(params))
+                    return redirect(url_for('hr_tracking') + '?' + urlencode(params))
                     
         selected_employees = [int(x) for x in request.args.getlist('employees') if x.isdigit()]
         selected_projects = []
@@ -1139,7 +1138,7 @@ def register_hr_routes(app):
         def page_url(p):
             args = request.args.to_dict(flat=False)
             args['page'] = [str(p)]
-            return url_for('hr_tracking') + '?' + urllib.parse.urlencode(args, doseq=True)
+            return url_for('hr_tracking') + '?' + urlencode(args, doseq=True)
             
         employees_list = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
         projects_list = db.execute("SELECT id, name FROM projects ORDER BY name").fetchall()
@@ -1208,7 +1207,7 @@ def register_hr_routes(app):
                                 params.append((k, v))
                     if params:
                         params.append(('filter_applied', '1'))
-                        return redirect(url_for('hr_live_summary') + '?' + urllib.parse.urlencode(params))
+                        return redirect(url_for('hr_live_summary') + '?' + urlencode(params))
 
         selected_sum_employees = [int(x) for x in request.args.getlist('sum_employees') if x.isdigit()]
         selected_sum_statuses = request.args.getlist('sum_statuses')
@@ -1302,7 +1301,7 @@ def register_hr_routes(app):
         def page_url(p):
             args = request.args.to_dict(flat=False)
             args['page'] = [str(p)]
-            return url_for('hr_live_summary') + '?' + urllib.parse.urlencode(args, doseq=True)
+            return url_for('hr_live_summary') + '?' + urlencode(args, doseq=True)
 
         employees_list = db.execute("SELECT id, full_name FROM users WHERE role = 'Employee' ORDER BY full_name").fetchall()
         return render_template(
@@ -1396,7 +1395,7 @@ def register_hr_routes(app):
         def page_url(p):
             args = request.args.to_dict(flat=False)
             args['page'] = [str(p)]
-            return url_for('hr_pending_approvals') + '?' + urllib.parse.urlencode(args, doseq=True)
+            return url_for('hr_pending_approvals') + '?' + urlencode(args, doseq=True)
             
         return render_template(
             'hr/hr_pending_approvals.html',

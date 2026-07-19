@@ -1,4 +1,3 @@
-import sqlite3
 from datetime import datetime
 
 def _default_eos_response(employee=None, daily_basic=0.0, daily_total=0.0):

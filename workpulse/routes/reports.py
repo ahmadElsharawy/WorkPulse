@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 from io import BytesIO
 import pandas as pd
