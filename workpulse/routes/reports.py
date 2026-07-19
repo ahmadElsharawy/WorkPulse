@@ -7,11 +7,11 @@ from flask_login import login_required, current_user
 from workpulse.decorators import role_required
 from workpulse.database import get_db
 
-def _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids=None, category=None):
+def _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids=None):
     db = get_db()
     params = [employee_id, f"{date_from} 00:00", f"{date_to} 23:59"]
     query = '''
-        SELECT t.id, t.created_at, t.running_duration, t.title, t.category, t.approval_status, p.id as project_id, p.name as project_name
+        SELECT t.id, t.created_at, t.running_duration, t.title, t.approval_status, p.id as project_id, p.name as project_name
         FROM tasks t
         JOIN projects p ON t.project_id = p.id
         WHERE t.employee_id = ?
@@ -22,17 +22,14 @@ def _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_id
         placeholders = ','.join('?' for _ in project_ids)
         query += f" AND p.id IN ({placeholders})"
         params.extend(project_ids)
-    if category:
-        query += " AND t.category = ?"
-        params.append(category)
     rows = db.execute(query, params).fetchall()
     return [dict(row) for row in rows]
 
-def _fetch_tasks_for_project_report(project_id, date_from, date_to, employee_ids=None, category=None):
+def _fetch_tasks_for_project_report(project_id, date_from, date_to, employee_ids=None):
     db = get_db()
     params = [f"{date_from} 00:00", f"{date_to} 23:59"]
     query = '''
-        SELECT t.id, t.created_at, t.running_duration, t.title, t.category, t.approval_status, u.id as employee_id, u.full_name as employee_name, p.id as project_id, p.name as project_name
+        SELECT t.id, t.created_at, t.running_duration, t.title, t.approval_status, u.id as employee_id, u.full_name as employee_name, p.id as project_id, p.name as project_name
         FROM tasks t
         JOIN users u ON t.employee_id = u.id
         LEFT JOIN projects p ON t.project_id = p.id
@@ -46,9 +43,6 @@ def _fetch_tasks_for_project_report(project_id, date_from, date_to, employee_ids
         placeholders = ','.join('?' for _ in employee_ids)
         query += f" AND u.id IN ({placeholders})"
         params.extend(employee_ids)
-    if category:
-        query += " AND t.category = ?"
-        params.append(category)
     rows = db.execute(query, params).fetchall()
     return [dict(row) for row in rows]
 
@@ -82,12 +76,12 @@ def _apply_excel_formatting(workbook):
 def _generate_employee_excel(tasks, employee_name, date_from, date_to, generated_by):
     df = pd.DataFrame(tasks)
     if df.empty:
-        df = pd.DataFrame(columns=['Date', 'Project Name', 'Task Title', 'Category', 'Duration (Hours)', 'Approval Status'])
+        df = pd.DataFrame(columns=['Date', 'Project Name', 'Task Title', 'Duration (Hours)', 'Approval Status'])
     else:
         df['Duration (Hours)'] = df['running_duration'].apply(lambda s: round(s / 3600.0, 2))
         df['Date'] = df['created_at'].apply(lambda x: x[:10])
-        df = df.rename(columns={'project_name': 'Project Name', 'title': 'Task Title', 'category': 'Category', 'approval_status': 'Approval Status'})
-        df = df[['Date', 'Project Name', 'Task Title', 'Category', 'Duration (Hours)', 'Approval Status']]
+        df = df.rename(columns={'project_name': 'Project Name', 'title': 'Task Title', 'approval_status': 'Approval Status'})
+        df = df[['Date', 'Project Name', 'Task Title', 'Duration (Hours)', 'Approval Status']]
         
     pivot = df.pivot_table(index='Project Name', values='Duration (Hours)', aggfunc='sum', fill_value=0)
     pivot.loc['Total'] = pivot.sum()
@@ -116,12 +110,12 @@ def _generate_employee_excel(tasks, employee_name, date_from, date_to, generated
 def _generate_project_excel(tasks, project_name, date_from, date_to, generated_by):
     df = pd.DataFrame(tasks)
     if df.empty:
-        df = pd.DataFrame(columns=['Date', 'Employee Name', 'Project Name', 'Task Title', 'Category', 'Duration (Hours)', 'Approval Status'])
+        df = pd.DataFrame(columns=['Date', 'Employee Name', 'Project Name', 'Task Title', 'Duration (Hours)', 'Approval Status'])
     else:
         df['Duration (Hours)'] = df['running_duration'].apply(lambda s: round(s / 3600.0, 2))
         df['Date'] = df['created_at'].apply(lambda x: x[:10])
-        df = df.rename(columns={'employee_name': 'Employee Name', 'project_name': 'Project Name', 'title': 'Task Title', 'category': 'Category', 'approval_status': 'Approval Status'})
-        df = df[['Date', 'Employee Name', 'Project Name', 'Task Title', 'Category', 'Duration (Hours)', 'Approval Status']]
+        df = df.rename(columns={'employee_name': 'Employee Name', 'project_name': 'Project Name', 'title': 'Task Title', 'approval_status': 'Approval Status'})
+        df = df[['Date', 'Employee Name', 'Project Name', 'Task Title', 'Duration (Hours)', 'Approval Status']]
         
     pivot = df.pivot_table(index='Employee Name', columns='Project Name', values='Duration (Hours)', aggfunc='sum', fill_value=0)
     pivot['Total'] = pivot.sum(axis=1)
@@ -183,7 +177,6 @@ def register_reports_routes(app):
         report_type = payload.get('type')
         date_from = payload.get('date_from')
         date_to = payload.get('date_to')
-        category = payload.get('category')
         if not report_type or not date_from or not date_to:
             return jsonify({'error': 'Missing required parameters'}), 400
         generated_by = current_user.full_name or current_user.username
@@ -195,7 +188,7 @@ def register_reports_routes(app):
             emp = get_db().execute('SELECT full_name FROM users WHERE id = ?', (employee_id,)).fetchone()
             if not emp:
                 return jsonify({'error': 'Employee not found'}), 404
-            rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, payload.get('project_ids'), category)
+            rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, payload.get('project_ids'))
             excel_io = _generate_employee_excel(rows, emp['full_name'], date_from, date_to, generated_by)
             sanitized_name = re.sub(r'[^A-Za-z0-9]+', '_', emp['full_name']).strip('_')
             filename = f"{sanitized_name}_{date_from}_{date_to}.xlsx"
@@ -207,7 +200,7 @@ def register_reports_routes(app):
                 if not proj:
                     return jsonify({'error': 'Project not found'}), 404
                 project_name = proj['name']
-            rows = _fetch_tasks_for_project_report(project_id, date_from, date_to, category=category)
+            rows = _fetch_tasks_for_project_report(project_id, date_from, date_to)
             excel_io = _generate_project_excel(rows, project_name, date_from, date_to, generated_by)
             if project_name:
                 sanitized_proj = re.sub(r'[^A-Za-z0-9]+', '_', project_name).strip('_')
@@ -230,7 +223,6 @@ def register_reports_routes(app):
         report_type = request.args.get('type')
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
-        category = request.args.get('category')
         
         if not report_type or not date_from or not date_to:
             flash('Missing report parameters.', 'danger')
@@ -251,7 +243,7 @@ def register_reports_routes(app):
                 return redirect(url_for('hr_reports_page'))
             title_label = f"Employee Report: {emp['full_name']}"
             project_ids = request.args.getlist('project_ids')
-            rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids, category)
+            rows = _fetch_tasks_for_employee_report(employee_id, date_from, date_to, project_ids)
         elif report_type == 'project':
             project_id = request.args.get('project_id')
             project_name = "All Projects"
@@ -263,7 +255,7 @@ def register_reports_routes(app):
             else:
                 project_id = None
             title_label = f"Project Report: {project_name}"
-            rows = _fetch_tasks_for_project_report(project_id, date_from, date_to, category=category)
+            rows = _fetch_tasks_for_project_report(project_id, date_from, date_to)
             
         total_seconds = sum(r['running_duration'] for r in rows)
         total_hours = round(total_seconds / 3600.0, 2)

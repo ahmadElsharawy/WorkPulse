@@ -156,10 +156,7 @@ def init_db():
             FOREIGN KEY(project_id) REFERENCES projects(id)
         )
     ''')
-    try:
-        db.execute('ALTER TABLE tasks ADD COLUMN category TEXT')
-    except sqlite3.OperationalError:
-        pass
+
     try:
         db.execute('ALTER TABLE tasks ADD COLUMN approval_status TEXT DEFAULT "Draft"')
     except sqlite3.OperationalError:

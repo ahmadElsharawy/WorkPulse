@@ -89,19 +89,6 @@
 
 {% block extra_js %}
 <script>
-  function refreshMetricsAndSummary() {
-    fetch(window.location.href, {cache: 'no-store'})
-      .then(resp => resp.text())
-      .then(html => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const metrics = doc.getElementById('metrics-wrapper');
-        if (metrics) document.getElementById('metrics-wrapper').innerHTML = metrics.innerHTML;
-      })
-      .catch(err => console.error('Refresh error:', err));
-  }
-  setInterval(refreshMetricsAndSummary, 10000);
-
   // Draw Charts
   {% if hr_chart_projects_data %}
   const projCtx = document.getElementById('hrProjectTimeChart').getContext('2d');

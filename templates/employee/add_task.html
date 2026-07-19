@@ -5,19 +5,44 @@
 <div class='page-header'>
   <div>
     <h1 class='page-title'>{{ _('add_new_task') }}</h1>
-    <p class='page-subtitle'>{{ 'بدء نشاط جديد وإسناده لأحد مشاريعك الحالية' if current_lang == 'ar' else 'Start a new activity and link it to one of your active projects' }}</p>
+    <p class='page-subtitle'>{{ 'إضافة مهمة جديدة أو تسجيل مهمة سابقة مكتملة لإرسالها للاعتماد' if current_lang == 'ar' else 'Add a new activity or log a forgotten completed task for manager approval' }}</p>
   </div>
   <a href='{{ url_for("employee_dashboard") }}' class='btn btn-secondary'>← {{ _('dashboard') }}</a>
 </div>
 
-<div class='card p-4 mx-auto shadow-sm' style='max-width: 600px;'>
-  <form method='post'>
+<div class='card p-4 mx-auto shadow-sm' style='max-width: 650px;'>
+  <form method='post' id='addTaskForm'>
+    
+    <!-- Task Mode Selector -->
+    <div class='mb-4 p-3 bg-light rounded border'>
+      <label class='form-label fw-bold mb-2'>{{ 'نوع المهمة' if current_lang == 'ar' else 'Task Type' }}</label>
+      <div class='row g-2'>
+        <div class='col-6'>
+          <input type='radio' class='btn-check' name='is_retroactive' id='mode_live' value='0' checked onchange='toggleTaskMode()'>
+          <label class='btn btn-outline-primary w-100 py-2 d-flex flex-column align-items-center justify-content-center h-100' for='mode_live'>
+            <span style='font-size: 1.2rem;'>⚡</span>
+            <span class='mt-1 small fw-bold'>{{ 'مهمة جارية / جديدة' if current_lang == 'ar' else 'Live / New Task' }}</span>
+          </label>
+        </div>
+        <div class='col-6'>
+          <input type='radio' class='btn-check' name='is_retroactive' id='mode_retroactive' value='1' onchange='toggleTaskMode()'>
+          <label class='btn btn-outline-warning text-dark w-100 py-2 d-flex flex-column align-items-center justify-content-center h-100' for='mode_retroactive'>
+            <span style='font-size: 1.2rem;'>🕒</span>
+            <span class='mt-1 small fw-bold'>{{ 'مهمة سابقة مكتملة (نسيت إضافتها)' if current_lang == 'ar' else 'Forgotten / Retroactive Task' }}</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task Title -->
     <div class='mb-3'>
-      <label class='form-label'>{{ _('task_title') }}</label>
+      <label class='form-label'>{{ _('task_title') }} <span class='text-danger'>*</span></label>
       <input type='text' name='title' class='form-control' placeholder='{{ "اسم المهمة أو النشاط" if current_lang == "ar" else "e.g. Design foundation layout" }}' required>
     </div>
+
+    <!-- Project Selection -->
     <div class='mb-3'>
-      <label class='form-label'>{{ _('projects') }}</label>
+      <label class='form-label'>{{ _('projects') }} <span class='text-danger'>*</span></label>
       <select name='project_id' class='form-select' required>
         <option value='' disabled selected>{{ _('select_project') }}...</option>
         {% for proj in projects %}
@@ -26,9 +51,57 @@
       </select>
     </div>
 
+
+
+    <!-- Retroactive Details Container (Hidden by default) -->
+    <div id='retroactiveSection' class='p-3 mb-4 rounded border bg-warning-subtle border-warning d-none'>
+      <div class='fw-bold text-dark mb-2 d-flex align-items-center gap-1'>
+        <span>🕒</span>
+        <span>{{ 'تفاصيل المهمة السابقة وتحديد الوقت والمدير' if current_lang == 'ar' else 'Retroactive Details & Manager Approval' }}</span>
+      </div>
+      <p class='text-muted small mb-3'>
+        {{ 'أدخل موعد بدء وانهاء العمل على المهمة والمدير المسؤول للاعتماد.' if current_lang == 'ar' else 'Specify start/end time and select your approving manager.' }}
+      </p>
+
+      <div class='row g-3 mb-3'>
+        <div class='col-md-6'>
+          <label class='form-label fw-bold'>{{ 'تاريخ ووقت البداية' if current_lang == 'ar' else 'Start Date & Time' }} <span class='text-danger'>*</span></label>
+          <input type='datetime-local' name='start_time' id='startTimeInput' class='form-control' onchange='calculateDuration()'>
+        </div>
+        <div class='col-md-6'>
+          <label class='form-label fw-bold'>{{ 'تاريخ ووقت الانتهاء' if current_lang == 'ar' else 'End Date & Time' }} <span class='text-danger'>*</span></label>
+          <input type='datetime-local' name='end_time' id='endTimeInput' class='form-control' onchange='calculateDuration()'>
+        </div>
+      </div>
+
+      <!-- Duration Calculation Display Badge -->
+      <div id='durationBadge' class='alert alert-info py-2 px-3 small mb-3 d-none'>
+        ⏳ <strong>{{ 'المدة المحسوبة:' if current_lang == 'ar' else 'Calculated Duration:' }}</strong> <span id='durationText'>-</span>
+      </div>
+
+      <!-- Approver Manager Selection -->
+      <div>
+        <label class='form-label fw-bold'>{{ 'المدير المعتمد (إرسال للموافقة)' if current_lang == 'ar' else 'Approving Manager' }}</label>
+        <select name='approver_id' class='form-select'>
+          {% if my_managers %}
+            <option value='0'>{{ 'اختر مديرك للاعتماد...' if current_lang == 'ar' else 'Select Approving Manager...' }}</option>
+            {% for mgr in my_managers %}
+              <option value='{{ mgr.id }}'>{{ mgr.full_name }} (@{{ mgr.username }})</option>
+            {% endfor %}
+          {% else %}
+            <option value='0'>{{ 'لا يوجد مدير مباشر مسند (تعتمد تلقائياً)' if current_lang == 'ar' else 'No manager assigned (Auto approved)' }}</option>
+          {% endif %}
+        </select>
+        <small class='text-muted d-block mt-1' style='font-size:0.78rem;'>
+          {{ 'عند اختيار المدير، سيتم إرسال المهمة له في صفحة الموافقات المعلقة لمراجعتها واعتمادها.' if current_lang == 'ar' else 'Selected manager will receive a notification to review and approve the task.' }}
+        </small>
+      </div>
+    </div>
+
+    <!-- Description -->
     <div class='mb-4'>
       <label class='form-label'>{{ _('description') }}</label>
-      <textarea name='description' class='form-control' rows='4' placeholder='{{ "ملاحظات تفصيلية حول ما سيتم إنجازه (اختياري)" if current_lang == "ar" else "Detailed notes about what will be done (optional)" }}'></textarea>
+      <textarea name='description' class='form-control' rows='3' placeholder='{{ "ملاحظات تفصيلية حول ما تم إنجازه (اختياري)" if current_lang == "ar" else "Detailed notes about what was done (optional)" }}'></textarea>
     </div>
 
     <div class='d-flex gap-2 justify-content-end'>
@@ -37,4 +110,64 @@
     </div>
   </form>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleTaskMode() {
+  const isRetroactive = document.getElementById('mode_retroactive').checked;
+  const section = document.getElementById('retroactiveSection');
+  const startInput = document.getElementById('startTimeInput');
+  const endInput = document.getElementById('endTimeInput');
+
+  if (isRetroactive) {
+    section.classList.remove('d-none');
+    startInput.required = true;
+    endInput.required = true;
+  } else {
+    section.classList.add('d-none');
+    startInput.required = false;
+    endInput.required = false;
+  }
+}
+
+function calculateDuration() {
+  const startVal = document.getElementById('startTimeInput').value;
+  const endVal = document.getElementById('endTimeInput').value;
+  const badge = document.getElementById('durationBadge');
+  const textEl = document.getElementById('durationText');
+
+  if (startVal && endVal) {
+    const start = new Date(startVal);
+    const end = new Date(endVal);
+    const diffMs = end - start;
+
+    if (diffMs > 0) {
+      const totalSeconds = Math.floor(diffMs / 1000);
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+
+      const lang = '{{ current_lang }}';
+      let formatted = '';
+      if (lang === 'ar') {
+        formatted = (h > 0 ? h + ' ساعة ' : '') + (m > 0 ? m + ' دقيقة ' : '') + (s > 0 ? s + ' ثانية' : '');
+      } else {
+        formatted = (h > 0 ? h + 'h ' : '') + (m > 0 ? m + 'm ' : '') + (s > 0 ? s + 's' : '');
+      }
+
+      textEl.textContent = formatted || (lang === 'ar' ? 'أقل من ثانية' : 'Less than a second');
+      badge.classList.remove('d-none', 'alert-danger');
+      badge.classList.add('alert-info');
+    } else {
+      textEl.textContent = '{{ "تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية!" if current_lang == "ar" else "End time must be after start time!" }}';
+      badge.classList.remove('d-none', 'alert-info');
+      badge.classList.add('alert-danger');
+    }
+  } else {
+    badge.classList.add('d-none');
+  }
+}
+</script>
 {% endblock %}

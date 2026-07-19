@@ -1,24 +1,107 @@
-/* WorkPulse – Global JS
-   ─ Sortable tables (smart cell parsing)
-   ─ Count-up metrics
-   ─ Ripple effect on click
-   ─ Typewriter title
+/* WorkPulse – Global Live & Dynamic Engine
+   ─ Real-time DOM Diffing & Live Background Auto-Updates (Zero Page Refresh)
+   ─ Live Running Task Timers (1s Ticks)
+   ─ Smart Sortable Tables
+   ─ Metric Count-Up Animations
+   ─ Ripple Feedback & Typewriter Effects
 */
 
-/* ═══════════════════════════════════════════════════════════
-   1.  SMART SORTABLE TABLES
-   ═══════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  /**
-   * Extract a sort-key from a table cell.
-   * Handles:
-   *  - Badge text like "Not Work" → treated as 0
-   *  - Plain numbers / duration strings "2h 15m 30s"
-   *  - Date strings YYYY-MM-DD or DD/MM/YYYY HH:MM
-   *  - Fallback: lowercase string
-   */
+  /* ═══════════════════════════════════════════════════════════
+     1.  LIVE RUNNING TASK TIMERS (1s Ticks)
+     ═══════════════════════════════════════════════════════════ */
+  function updateTimers() {
+    const now = new Date();
+    document.querySelectorAll('.duration-display').forEach(function (el) {
+      if (el.getAttribute('data-status') !== 'Running') return;
+      const lastStartedStr = el.getAttribute('data-last-started');
+      if (!lastStartedStr) return;
+
+      const lastStarted = new Date(lastStartedStr + 'Z');
+      const accumulated = parseInt(el.getAttribute('data-accumulated') || '0', 10);
+      const totalSeconds = accumulated + Math.max(0, Math.floor((now - lastStarted) / 1000));
+
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+
+      const lang = document.documentElement.lang || 'ar';
+      if (lang === 'ar') {
+        el.textContent = (h > 0 ? h + 'س ' : '') + (m > 0 ? m + 'د ' : '') + s + 'ث';
+      } else {
+        el.textContent = (h > 0 ? h + 'h ' : '') + (m > 0 ? m + 'm ' : '') + s + 's';
+      }
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     2.  GLOBAL REAL-TIME DOM AUTO-UPDATER (No Page Refresh)
+     ═══════════════════════════════════════════════════════════ */
+  const TARGET_CONTAINERS = [
+    'metrics-wrapper',
+    'live-tasks-wrapper',
+    'summary-wrapper',
+    'subordinate-live-tasks-wrapper',
+    'my-tasks-card',
+    'pending-approvals-card',
+    'hr-pending-approvals-card'
+  ];
+
+  function pollLiveUpdates() {
+    // Only poll if tab is active to save resources
+    if (document.hidden) return;
+
+    fetch(window.location.href, { cache: 'no-store' })
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(html => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        // 1. Update Target Content Containers
+        TARGET_CONTAINERS.forEach(id => {
+          const currentEl = document.getElementById(id);
+          const freshEl = doc.getElementById(id);
+
+          if (currentEl && freshEl) {
+            if (currentEl.innerHTML.trim() !== freshEl.innerHTML.trim()) {
+              currentEl.innerHTML = freshEl.innerHTML;
+              currentEl.classList.remove('live-update-flash');
+              // Force reflow
+              void currentEl.offsetWidth;
+              currentEl.classList.add('live-update-flash');
+            }
+          }
+        });
+
+        // 2. Update Header Pending Approvals Badges in Real-Time
+        const currentBadgeContainers = document.querySelectorAll('.nav-pending-badge-container');
+        const freshBadgeContainers = doc.querySelectorAll('.nav-pending-badge-container');
+
+        if (currentBadgeContainers.length > 0 && freshBadgeContainers.length > 0) {
+          currentBadgeContainers.forEach((cur, idx) => {
+            if (freshBadgeContainers[idx] && cur.innerHTML.trim() !== freshBadgeContainers[idx].innerHTML.trim()) {
+              cur.innerHTML = freshBadgeContainers[idx].innerHTML;
+            }
+          });
+        }
+
+        // Re-init timers & sortable tables on updated content
+        updateTimers();
+        if (window.initSortableTables) window.initSortableTables();
+      })
+      .catch(err => {
+        // Quietly log network errors without disturbing UX
+        console.debug('WorkPulse live sync:', err);
+      });
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     3.  SMART SORTABLE TABLES ENGINE
+     ═══════════════════════════════════════════════════════════ */
   function cellValue(cell) {
     let txt = '';
     cell.childNodes.forEach(n => {
@@ -29,30 +112,24 @@
     });
     txt = txt.trim();
 
-    // Known status words → numeric sentinel so they sort together
     const STATUS_ORDER = { 'not work': 0, 'pause': 1, 'running': 2, 'finish': 3 };
     const lower = txt.toLowerCase();
     if (STATUS_ORDER[lower] !== undefined) return STATUS_ORDER[lower];
 
-    // Duration "2h 15m 30s"
     const dur = txt.match(/^(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?$/);
     if (dur && txt.length > 0 && (dur[1] || dur[2] || dur[3])) {
       return (parseInt(dur[1] || 0) * 3600) + (parseInt(dur[2] || 0) * 60) + parseInt(dur[3] || 0);
     }
 
-    // Date YYYY-MM-DD (possibly with time)
     const d1 = txt.match(/^(\d{4})[/-](\d{2})[/-](\d{2})/);
     if (d1) { const t = new Date(txt).getTime(); if (!isNaN(t)) return t; }
 
-    // Date DD/MM/YYYY
     const d2 = txt.match(/^(\d{2})[/-](\d{2})[/-](\d{4})/);
     if (d2) { const t = new Date(`${d2[3]}-${d2[2]}-${d2[1]}`).getTime(); if (!isNaN(t)) return t; }
 
-    // Plain number
     const n = parseFloat(txt.replace(/,/g, ''));
     if (!isNaN(n)) return n;
 
-    // Fallback: lowercase string
     return lower;
   }
 
@@ -108,7 +185,6 @@
           return sortAsc ? compare(va, vb) : compare(vb, va);
         });
 
-        // Arrange rows
         rows.forEach(r => tbody.appendChild(r));
       });
     });
@@ -119,23 +195,9 @@
     document.querySelectorAll('table[data-sortable], table.table-sortable').forEach(makeSortable);
   };
 
-  document.addEventListener('DOMContentLoaded', window.initSortableTables);
-
-  // Re-init when live sections refresh via polling
-  const mo = new MutationObserver(() => window.initSortableTables());
-  document.addEventListener('DOMContentLoaded', () => {
-    ['subordinate-live-tasks-wrapper', 'summary-wrapper'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) mo.observe(el, { childList: true, subtree: true });
-    });
-  });
-})();
-
-
-/* ═══════════════════════════════════════════════════════════
-   2.  COUNT-UP ANIMATION
-   ═══════════════════════════════════════════════════════════ */
-(function () {
+  /* ═══════════════════════════════════════════════════════════
+     4.  MICRO-ANIMATIONS & INTERACTIVES
+     ═══════════════════════════════════════════════════════════ */
   function animateCount(el, target, duration) {
     const startTime = performance.now();
     function step(now) {
@@ -146,22 +208,6 @@
     }
     requestAnimationFrame(step);
   }
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.metric-number[data-count-up]').forEach(el => {
-      const target = parseInt(el.dataset.countUp, 10);
-      if (!isNaN(target)) animateCount(el, target, 1000);
-    });
-  });
-})();
-
-
-/* ═══════════════════════════════════════════════════════════
-   3.  RIPPLE EFFECT
-   ═══════════════════════════════════════════════════════════ */
-(function () {
-  const style = document.createElement('style');
-  style.textContent = '@keyframes rippleAnim { to { transform:scale(3); opacity:0; } }';
-  document.head.appendChild(style);
 
   function addRipple(e) {
     const btn = e.currentTarget;
@@ -180,34 +226,50 @@
     btn.appendChild(span);
     setTimeout(() => span.remove(), 650);
   }
+
+  /* ═══════════════════════════════════════════════════════════
+     5.  INITIALIZATION ON DOM LOAD
+     ═══════════════════════════════════════════════════════════ */
   document.addEventListener('DOMContentLoaded', () => {
+    // 1. Initialise Live Timers
+    updateTimers();
+    setInterval(updateTimers, 1000);
+
+    // 2. Initialise Global Real-Time Background Sync (Every 5 seconds)
+    setInterval(pollLiveUpdates, 5000);
+
+    // 3. Initialise Sortable Tables
+    window.initSortableTables();
+
+    // 4. Initialise Metric Count-Up Animations
+    document.querySelectorAll('.metric-number[data-count-up]').forEach(el => {
+      const target = parseInt(el.dataset.countUp, 10);
+      if (!isNaN(target)) animateCount(el, target, 1000);
+    });
+
+    // 5. Ripple Effect on Buttons
     document.querySelectorAll('.btn').forEach(b => b.addEventListener('click', addRipple));
-  });
-})();
 
-
-/* ═══════════════════════════════════════════════════════════
-   4.  TYPEWRITER EFFECT on page-title
-   ═══════════════════════════════════════════════════════════ */
-(function () {
-  document.addEventListener('DOMContentLoaded', () => {
+    // 6. Typewriter Effect on Page Titles
     const title = document.querySelector('h1.page-title');
-    if (!title) return;
-    const original = title.textContent.trim();
-    if (original.length > 32) return;
-    title.textContent = '';
-    title.style.borderRight = '2px solid var(--accent,#4f46e5)';
-    title.style.whiteSpace = 'nowrap';
-    title.style.overflow = 'hidden';
-    title.style.display = 'inline-block';
+    if (title) {
+      const original = title.textContent.trim();
+      if (original.length <= 32) {
+        title.textContent = '';
+        title.style.borderRight = '2px solid var(--accent,#4f46e5)';
+        title.style.whiteSpace = 'nowrap';
+        title.style.overflow = 'hidden';
+        title.style.display = 'inline-block';
 
-    let i = 0;
-    const interval = setInterval(() => {
-      title.textContent = original.slice(0, ++i);
-      if (i >= original.length) {
-        clearInterval(interval);
-        setTimeout(() => { title.style.borderRight = 'none'; }, 800);
+        let i = 0;
+        const interval = setInterval(() => {
+          title.textContent = original.slice(0, ++i);
+          if (i >= original.length) {
+            clearInterval(interval);
+            setTimeout(() => { title.style.borderRight = 'none'; }, 800);
+          }
+        }, 45);
       }
-    }, 45);
+    }
   });
 })();

@@ -257,13 +257,52 @@ def register_employee_routes(app):
             title = request.form['title']
             description = request.form.get('description', '')
             project_id = int(request.form['project_id'])
-            category = request.form.get('category', 'Other')
-            now = datetime.now().strftime('%Y-%m-%d %H:%M')
-            db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id, category) VALUES (?,?,?,?,?,?,?,?,?)',
-                       (current_user.id, project_id, title, description, 'Pause', now, 0, current_user.id, category))
-            db.commit()
-            flash('Task added.', 'success')
-            return redirect(url_for('employee_dashboard'))
+            is_retroactive = request.form.get('is_retroactive') == '1'
+            
+            if is_retroactive:
+                start_time_str = request.form.get('start_time', '').strip()
+                end_time_str = request.form.get('end_time', '').strip()
+                approver_id_val = request.form.get('approver_id', '0')
+                
+                if not start_time_str or not end_time_str:
+                    flash('يرجى تحديد تاريخ ووقت البداية والانتهاء للمهمة السابقة.' if session.get('lang') == 'ar' else 'Please specify start and end date/time for the retroactive task.', 'danger')
+                    return redirect(url_for('add_task'))
+                
+                try:
+                    start_dt = datetime.strptime(start_time_str, '%Y-%m-%dT%H:%M')
+                    end_dt = datetime.strptime(end_time_str, '%Y-%m-%dT%H:%M')
+                except ValueError:
+                    flash('صيغة التاريخ أو الوقت غير صحيحة.' if session.get('lang') == 'ar' else 'Invalid date format.', 'danger')
+                    return redirect(url_for('add_task'))
+                
+                if end_dt <= start_dt:
+                    flash('تاريخ ووقت الانتهاء يجب أن يكون بعد تاريخ ووقت البداية.' if session.get('lang') == 'ar' else 'End time must be after start time.', 'danger')
+                    return redirect(url_for('add_task'))
+                
+                duration_seconds = int((end_dt - start_dt).total_seconds())
+                created_at = start_dt.strftime('%Y-%m-%d %H:%M')
+                
+                approver_id = int(approver_id_val) if approver_id_val.isdigit() and int(approver_id_val) > 0 else None
+                approval_status = 'Submitted' if approver_id else 'Approved'
+                
+                db.execute('''
+                    INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id, approval_status, approver_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (current_user.id, project_id, title, description, 'Finish', created_at, duration_seconds, current_user.id, approval_status, approver_id))
+                db.commit()
+                
+                if approval_status == 'Submitted':
+                    flash('تمت إضافة المهمة السابقة وإرسالها إلى مديرك للمراجعة والاعتماد.' if session.get('lang') == 'ar' else 'Retroactive task added and submitted to manager for approval.', 'success')
+                else:
+                    flash('تمت إضافة المهمة المكتملة بنجاح.' if session.get('lang') == 'ar' else 'Retroactive task added successfully.', 'success')
+                return redirect(url_for('employee_dashboard'))
+            else:
+                now = datetime.now().strftime('%Y-%m-%d %H:%M')
+                db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                           (current_user.id, project_id, title, description, 'Pause', now, 0, current_user.id))
+                db.commit()
+                flash('Task added.', 'success')
+                return redirect(url_for('employee_dashboard'))
             
         projects_raw = db.execute('''
             SELECT p.id, p.name, ep.allocated_hours,
@@ -292,7 +331,15 @@ def register_employee_routes(app):
             raw_fallback = db.execute('SELECT * FROM projects ORDER BY name').fetchall()
             projects = [{'id': p['id'], 'name': f"{p['name']} (Unlimited hours)", 'remaining': 0, 'allocated': 0} for p in raw_fallback]
             
-        return render_template('employee/add_task.html', projects=projects)
+        my_managers = db.execute('''
+            SELECT u.id, u.full_name, u.username
+            FROM users u
+            JOIN employee_managers em ON u.id = em.manager_id
+            WHERE em.employee_id = ?
+            ORDER BY u.full_name
+        ''', (current_user.id,)).fetchall()
+            
+        return render_template('employee/add_task.html', projects=projects, my_managers=my_managers)
 
     @app.route('/employee/edit/<int:task_id>', methods=['GET', 'POST'])
     @role_required('Employee')
@@ -311,7 +358,6 @@ def register_employee_routes(app):
             description = request.form['description']
             new_status = request.form['status']
             project_id = int(request.form['project_id'])
-            category = request.form.get('category', 'Other')
             
             old_status = task['status']
             old_running_duration = task['running_duration'] or 0
@@ -353,9 +399,9 @@ def register_employee_routes(app):
 
             db.execute('''
                 UPDATE tasks 
-                SET title = ?, description = ?, status = ?, running_duration = ?, last_started_at = ?, project_id = ?, category = ?, approval_status = ?, approver_id = ?
+                SET title = ?, description = ?, status = ?, running_duration = ?, last_started_at = ?, project_id = ?, approval_status = ?, approver_id = ?
                 WHERE id = ? AND employee_id = ?
-            ''', (title, description, new_status, new_running_duration, new_last_started_at, project_id, category, approval_status, approver_id, task_id, current_user.id))
+            ''', (title, description, new_status, new_running_duration, new_last_started_at, project_id, approval_status, approver_id, task_id, current_user.id))
             db.commit()
             flash('Task updated.', 'success')
             return redirect(url_for('employee_dashboard'))
@@ -523,11 +569,9 @@ def register_employee_routes(app):
         if request.method == 'POST':
             title = request.form['title']
             description = request.form.get('description', '')
-            project_id = int(request.form['project_id'])
-            category = request.form.get('category', 'Other')
             now = datetime.now().strftime('%Y-%m-%d %H:%M')
-            db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id, category) VALUES (?,?,?,?,?,?,?,?,?)',
-                       (sub_id, project_id, title, description, 'Pause', now, 0, current_user.id, category))
+            db.execute('INSERT INTO tasks (employee_id, project_id, title, description, status, created_at, running_duration, creator_id) VALUES (?,?,?,?,?,?,?,?)',
+                       (sub_id, project_id, title, description, 'Pause', now, 0, current_user.id))
             db.commit()
             flash('Task assigned to employee.', 'success')
             return redirect(url_for('view_subordinate_tasks', sub_id=sub_id))
@@ -682,7 +726,7 @@ def register_employee_routes(app):
     @role_required('Employee')
     def pending_approvals():
         db = get_db()
-        pending_sub_approvals = db.execute('''
+        pending_sub_approvals_raw = db.execute('''
             SELECT t.*, u.full_name AS employee_name, p.name AS project_name
             FROM tasks t
             JOIN users u ON t.employee_id = u.id
@@ -690,7 +734,55 @@ def register_employee_routes(app):
             WHERE t.approver_id = ? AND t.approval_status = 'Submitted'
             ORDER BY t.created_at DESC
         ''', (current_user.id,)).fetchall()
-        return render_template('employee/pending_approvals.html', pending_sub_approvals=pending_sub_approvals)
+        
+        # Paginate pending approvals
+        def get_pagination_range(curr, total):
+            if total <= 7:
+                return list(range(1, total + 1))
+            res = []
+            if curr <= 4:
+                res.extend([1, 2, 3, 4])
+                res.append(None)
+                res.append(total)
+            elif curr >= total - 3:
+                res.append(1)
+                res.append(None)
+                res.extend(range(total - 3, total + 1))
+            else:
+                res.append(1)
+                res.append(None)
+                res.extend([curr - 1, curr, curr + 1])
+                res.append(None)
+                res.append(total)
+            return res
+
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        total_tasks = len(pending_sub_approvals_raw)
+        total_pages = (total_tasks + per_page - 1) // per_page
+        page = max(1, min(page, total_pages)) if total_pages > 0 else 1
+        offset = (page - 1) * per_page
+        paginated_pending_approvals = pending_sub_approvals_raw[offset:offset+per_page]
+        page_range = get_pagination_range(page, total_pages)
+        showing_from = offset + 1 if total_tasks > 0 else 0
+        showing_to = min(offset + per_page, total_tasks)
+
+        def page_url(p):
+            args = request.args.to_dict(flat=False)
+            args['page'] = [str(p)]
+            return url_for('pending_approvals') + '?' + urllib.parse.urlencode(args, doseq=True)
+
+        return render_template(
+            'employee/pending_approvals.html',
+            pending_sub_approvals=paginated_pending_approvals,
+            page=page,
+            total_pages=total_pages,
+            page_range=page_range,
+            page_url=page_url,
+            showing_from=showing_from,
+            showing_to=showing_to,
+            total_tasks=total_tasks
+        )
 
     @app.route('/employee/subordinate-tracking')
     @role_required('Employee')
